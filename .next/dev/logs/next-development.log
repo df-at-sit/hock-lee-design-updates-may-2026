@@ -1,0 +1,102 @@
+[00:00:01.015] Server  LOG     
+[00:00:01.015] Server  LOG       We detected TypeScript in your project and reconfigured your tsconfig.json file for you.
+[00:00:01.015] Server  LOG       The following suggested values were added to your tsconfig.json. These values can be changed to fit your project's needs:
+
+[00:00:01.015] Server  LOG       	- include was updated to add '.next/dev/types/**/*.ts'
+[00:00:01.015] Server  LOG     
+[00:00:01.015] Server  LOG       The following mandatory changes were made to your tsconfig.json:
+
+[00:00:01.015] Server  LOG       	- jsx was set to react-jsx (next.js uses the React automatic runtime)
+[00:00:01.015] Server  LOG     
+[00:00:01.067] Server  LOG     ✓ Ready in 946ms
+[00:00:12.134] Server  ERROR   ⨯ ./Documents/Github/hock-lee-design-sit/src/app/layout.tsx:3:1
+Module not found: Can't resolve './globals.css'
+  1 | import type { Metadata } from "next";
+  2 | import { Geist, Geist_Mono } from "next/font/google";
+> 3 | import "./globals.css";
+    | ^^^^^^^^^^^^^^^^^^^^^^^
+  4 |
+  5 | const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
+  6 | const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
+
+
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+[00:00:12.537] Browser ERROR   uncaughtError: Error: ./Documents/Github/hock-lee-design-sit/src/app/layout.tsx:3:1
+Module not found: Can't resolve './globals.css'
+  1 | import type { Metadata } from "next";
+  2 | import { Geist, Geist_Mono } from "next/font/google";
+> 3 | import "./globals.css";
+    | ^^^^^^^^^^^^^^^^^^^^^^^
+  4 |
+  5 | const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
+  6 | const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
+
+
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+[00:00:12.698] Browser ERROR   ./Documents/Github/hock-lee-design-sit/src/app/layout.tsx:3:1
+Module not found: Can't resolve './globals.css'
+  1 | import type { Metadata } from "next";
+  2 | import { Geist, Geist_Mono } from "next/font/google";
+> 3 | import "./globals.css";
+    | ^^^^^^^^^^^^^^^^^^^^^^^
+  4 |
+  5 | const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
+  6 | const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
+
+https://nextjs.org/docs/messages/module-not-found
+[00:00:13.065] Browser ERROR   ./Documents/Github/hock-lee-design-sit/src/app/layout.tsx:3:1
+Module not found: Can't resolve './globals.css'
+  1 | import type { Metadata } from "next";
+  2 | import { Geist, Geist_Mono } from "next/font/google";
+> 3 | import "./globals.css";
+    | ^^^^^^^^^^^^^^^^^^^^^^^
+  4 |
+  5 | const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
+  6 | const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
+
+https://nextjs.org/docs/messages/module-not-found
+[00:00:22.122] Server  ERROR   ⨯ ./Documents/Github/hock-lee-design-sit/src/app/layout.tsx:3:1
+Module not found: Can't resolve './globals.css'
+  1 | import type { Metadata } from "next";
+  2 | import { Geist, Geist_Mono } from "next/font/google";
+> 3 | import "./globals.css";
+    | ^^^^^^^^^^^^^^^^^^^^^^^
+  4 |
+  5 | const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
+  6 | const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
+
+
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+[00:00:22.257] Browser ERROR   ./Documents/Github/hock-lee-design-sit/src/app/layout.tsx:3:1
+Module not found: Can't resolve './globals.css'
+  1 | import type { Metadata } from "next";
+  2 | import { Geist, Geist_Mono } from "next/font/google";
+> 3 | import "./globals.css";
+    | ^^^^^^^^^^^^^^^^^^^^^^^
+  4 |
+  5 | const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
+  6 | const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
+
+https://nextjs.org/docs/messages/module-not-found
+[00:00:28.838] Browser ERROR   ./Documents/Github/hock-lee-design-sit/src/app/layout.tsx:3:1
+Module not found: Can't resolve './globals.css'
+  1 | import type { Metadata } from "next";
+  2 | import { Geist, Geist_Mono } from "next/font/google";
+> 3 | import "./globals.css";
+    | ^^^^^^^^^^^^^^^^^^^^^^^
+  4 |
+  5 | const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
+  6 | const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
+
+https://nextjs.org/docs/messages/module-not-found
+[00:01:27.096] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:01:46.045] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
