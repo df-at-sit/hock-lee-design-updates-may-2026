@@ -6,7 +6,7 @@ import {
   useMemo,
   useRef,
   useState,
-  type CSSProperties,
+  useSyncExternalStore,
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -23,39 +23,24 @@ import {
   buildRoleAwareRoute,
   CHARACTER_PRESENTATIONS,
   getRoleSteps,
+  getStoryPhaseTrack,
   getStoryStepByNodeKey,
   MAP_NODE_DEFINITIONS,
   MASTER_MODE_NODE_ORDER,
   type MapNodeKey,
-  STORY_PHASE_TRACK,
 } from "../story-data";
-import {
-  getStoredCharacterCode,
-  persistCharacterCode,
-} from "../scene-config";
-import { INTRO_CUTSCENE_ROUTE } from "../story-paths";
+import { clearDispositionProgress } from "../disposition-state";
+import { INTRO_CUTSCENE_ROUTE, OUTRO_CUTSCENE_ROUTE } from "../story-paths";
 import { GameMenuOverlay } from "../game-menu-overlay";
+import { SceneCameraButton, SceneTitleWithCamera } from "../scene-title-with-camera";
+import { useSelectedCharacterCode } from "../use-selected-character-code";
 
 const MAP_NODE_IDLE_FILTER =
   "drop-shadow(1px 1px 0 rgba(0, 0, 0, 0.72)) drop-shadow(0 3px 6px rgba(0, 0, 0, 0.55))";
 const MAP_NODE_LOCKED_FILTER = "grayscale(1) brightness(0.52) contrast(0.9)";
-const SCHOOL_ZONE_POSITION = { left: "14%", top: "49%" } as const;
-const SCHOOL_ZONE_NODE_KEYS: MapNodeKey[] = [
-  "classroom",
-  "school-lake",
-  "school-gates",
-];
-const SCHOOL_ZONE_NODE_KEY_SET = new Set<MapNodeKey>(SCHOOL_ZONE_NODE_KEYS);
-const SCHOOL_ZONE_FOCUS_KEY = "school-zone";
-const SCHOOL_CLUSTER_NODE_DELAYS: Partial<Record<MapNodeKey, string>> = {
-  classroom: "0ms",
-  "school-gates": "70ms",
-  "school-lake": "140ms",
-};
 
 type ArrowDirection = "ArrowLeft" | "ArrowRight" | "ArrowUp" | "ArrowDown";
-type MapFocusKey = MapNodeKey | typeof SCHOOL_ZONE_FOCUS_KEY;
-type MapNodeNavPoint = { nodeKey: MapFocusKey; x: number; y: number };
+type MapNodeNavPoint = { nodeKey: MapNodeKey; x: number; y: number };
 
 type ResolvedMapNode = {
   key: MapNodeKey;
@@ -68,8 +53,18 @@ type ResolvedMapNode = {
   route: string | null;
 };
 
+const MAP_TITLE_PHASE_PREFIX = /^(?:Pre-Riot|Riot|Post-Riot):\s*/;
+
+const stripMapTitlePhasePrefix = (title: string) =>
+  title.replace(MAP_TITLE_PHASE_PREFIX, "");
+
+const subscribeToMapStorage = (onStoreChange: () => void) => {
+  window.addEventListener("storage", onStoreChange);
+  return () => window.removeEventListener("storage", onStoreChange);
+};
+
 const findNextSceneNode = (
-  currentNodeKey: MapFocusKey,
+  currentNodeKey: MapNodeKey,
   direction: ArrowDirection,
   nodes: MapNodeNavPoint[]
 ) => {
@@ -108,7 +103,7 @@ const findNextSceneNode = (
       (
         candidate
       ): candidate is {
-        nodeKey: MapFocusKey;
+        nodeKey: MapNodeKey;
         projection: number;
         distance: number;
         anglePenalty: number;
@@ -131,13 +126,6 @@ const findNextSceneNode = (
   return fallback[0].nodeKey;
 };
 
-const isSchoolClusterNodeKey = (
-  nodeKey: MapFocusKey | null
-): nodeKey is MapNodeKey =>
-  nodeKey !== null &&
-  nodeKey !== SCHOOL_ZONE_FOCUS_KEY &&
-  SCHOOL_ZONE_NODE_KEY_SET.has(nodeKey);
-
 const getUnlockedStepIndexByNodeKey = (
   role: CharacterCode,
   unlockedThroughIndex: number
@@ -155,42 +143,92 @@ const getUnlockedStepIndexByNodeKey = (
 
 export default function Map1961Page() {
   const searchParams = useSearchParams();
-  const selectedCharacter = getStoredCharacterCode(searchParams.get("role"));
+  const selectedCharacter = useSelectedCharacterCode(searchParams.get("role"));
+  const initialMapState = useSyncExternalStore(
+    subscribeToMapStorage,
+    () => loadInitialMapState(selectedCharacter),
+    () => buildDefaultMapState(selectedCharacter)
+  );
 
   useEffect(() => {
-    persistCharacterCode(selectedCharacter);
-  }, [selectedCharacter]);
+    window.localStorage.removeItem(MAP_UNLOCK_ANIMATION_SCENE_KEY);
+  }, [initialMapState.unlockAnimationNodeKey]);
 
   return (
     <RoleMapPage
-      key={selectedCharacter}
+      key={`${selectedCharacter}-${initialMapState.visitedProgress}-${initialMapState.activeNodeKey ?? "none"}-${initialMapState.unlockAnimationNodeKey ?? "none"}`}
+      initialMapState={initialMapState}
       selectedCharacter={selectedCharacter}
     />
   );
 }
 
 type RoleMapPageProps = {
+  initialMapState: InitialMapState;
   selectedCharacter: CharacterCode;
 };
 
 type InitialMapState = {
   visitedProgress: number;
-  activeNodeKey: MapFocusKey | null;
+  activeNodeKey: MapNodeKey | null;
   unlockAnimationNodeKey: MapNodeKey | null;
 };
 
-const loadInitialMapState = (selectedCharacter: CharacterCode): InitialMapState => {
+const defaultMapStateCache = new Map<CharacterCode, InitialMapState>();
+
+let cachedHydratedMapState:
+  | {
+      selectedCharacter: CharacterCode;
+      visitedProgressStorageValue: string | null;
+      lastNodeStorageValue: string | null;
+      unlockAnimationStorageValue: string | null;
+      state: InitialMapState;
+    }
+  | null = null;
+
+const buildDefaultMapState = (selectedCharacter: CharacterCode): InitialMapState => {
+  const cachedState = defaultMapStateCache.get(selectedCharacter);
+  if (cachedState) {
+    return cachedState;
+  }
+
   const firstNodeKey = getRoleSteps(selectedCharacter)[0]?.nodeKey ?? null;
+  const defaultState = {
+    visitedProgress: -1,
+    activeNodeKey: firstNodeKey,
+    unlockAnimationNodeKey: null,
+  };
+
+  defaultMapStateCache.set(selectedCharacter, defaultState);
+  return defaultState;
+};
+
+const loadInitialMapState = (selectedCharacter: CharacterCode): InitialMapState => {
+  const defaultMapState = buildDefaultMapState(selectedCharacter);
   if (typeof window === "undefined") {
-    return {
-      visitedProgress: -1,
-      activeNodeKey: firstNodeKey,
-      unlockAnimationNodeKey: null,
-    };
+    return defaultMapState;
+  }
+
+  const visitedProgressStorageValue =
+    window.localStorage.getItem(MAP_VISITED_PROGRESS_KEY);
+  const lastNodeStorageValue = window.localStorage.getItem(MAP_LAST_NODE_KEY);
+  const unlockAnimationStorageValue = window.localStorage.getItem(
+    MAP_UNLOCK_ANIMATION_SCENE_KEY
+  );
+  const cachedState = cachedHydratedMapState;
+
+  if (
+    cachedState &&
+    cachedState.selectedCharacter === selectedCharacter &&
+    cachedState.visitedProgressStorageValue === visitedProgressStorageValue &&
+    cachedState.lastNodeStorageValue === lastNodeStorageValue &&
+    cachedState.unlockAnimationStorageValue === unlockAnimationStorageValue
+  ) {
+    return cachedState.state;
   }
 
   const hydratedVisitedProgress = parseVisitedProgress(
-    window.localStorage.getItem(MAP_VISITED_PROGRESS_KEY),
+    visitedProgressStorageValue,
     selectedCharacter
   );
   const unlockedThroughIndex = getUnlockedThroughIndex(
@@ -201,32 +239,36 @@ const loadInitialMapState = (selectedCharacter: CharacterCode): InitialMapState 
     selectedCharacter,
     unlockedThroughIndex
   );
-  const storedNodeKey = parseMapLastNodeKey(
-    window.localStorage.getItem(MAP_LAST_NODE_KEY)
-  ) as MapNodeKey | null;
+  const storedNodeKey = parseMapLastNodeKey(lastNodeStorageValue) as MapNodeKey | null;
   const defaultNodeKey =
-    getRoleSteps(selectedCharacter)[unlockedThroughIndex]?.nodeKey ?? firstNodeKey;
+    getRoleSteps(selectedCharacter)[unlockedThroughIndex]?.nodeKey ??
+    defaultMapState.activeNodeKey;
 
-  return {
+  const nextState = {
     visitedProgress: hydratedVisitedProgress,
     activeNodeKey:
       storedNodeKey && unlockedStepIndexByNodeKey.has(storedNodeKey)
         ? storedNodeKey
         : defaultNodeKey,
     unlockAnimationNodeKey:
-      (window.localStorage.getItem(MAP_UNLOCK_ANIMATION_SCENE_KEY) as MapNodeKey | null) ??
-      null,
+      (unlockAnimationStorageValue as MapNodeKey | null) ?? null,
   };
+
+  cachedHydratedMapState = {
+    selectedCharacter,
+    visitedProgressStorageValue,
+    lastNodeStorageValue,
+    unlockAnimationStorageValue,
+    state: nextState,
+  };
+
+  return nextState;
 };
 
-function RoleMapPage({ selectedCharacter }: RoleMapPageProps) {
+function RoleMapPage({ initialMapState, selectedCharacter }: RoleMapPageProps) {
   const router = useRouter();
-  const initialMapState = useMemo(
-    () => loadInitialMapState(selectedCharacter),
-    [selectedCharacter]
-  );
   const [visitedProgress, setVisitedProgress] = useState(initialMapState.visitedProgress);
-  const [activeNodeKey, setActiveNodeKey] = useState<MapFocusKey | null>(
+  const [activeNodeKey, setActiveNodeKey] = useState<MapNodeKey | null>(
     initialMapState.activeNodeKey
   );
   const [unlockAnimationNodeKey, setUnlockAnimationNodeKey] = useState<MapNodeKey | null>(
@@ -236,60 +278,7 @@ function RoleMapPage({ selectedCharacter }: RoleMapPageProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [masterMode, setMasterMode] = useState(false);
-  const [isSchoolZoneHovered, setIsSchoolZoneHovered] = useState(false);
   const isRouteLoadingRef = useRef(false);
-  const mapNodeLayerRef = useRef<HTMLDivElement | null>(null);
-  const schoolZoneHoverTimeoutRef = useRef<number | null>(null);
-  const [mapNodeLayerSize, setMapNodeLayerSize] = useState({ width: 0, height: 0 });
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      window.localStorage.removeItem(MAP_UNLOCK_ANIMATION_SCENE_KEY);
-    }
-  }, []);
-
-  const clearSchoolZoneHoverTimeout = useCallback(() => {
-    if (schoolZoneHoverTimeoutRef.current === null) return;
-    window.clearTimeout(schoolZoneHoverTimeoutRef.current);
-    schoolZoneHoverTimeoutRef.current = null;
-  }, []);
-
-  const scheduleSchoolZoneHoverExit = useCallback(() => {
-    clearSchoolZoneHoverTimeout();
-    schoolZoneHoverTimeoutRef.current = window.setTimeout(() => {
-      setIsSchoolZoneHovered(false);
-      schoolZoneHoverTimeoutRef.current = null;
-    }, 90);
-  }, [clearSchoolZoneHoverTimeout]);
-
-  useEffect(
-    () => () => {
-      clearSchoolZoneHoverTimeout();
-    },
-    [clearSchoolZoneHoverTimeout]
-  );
-
-  useEffect(() => {
-    const nodeLayer = mapNodeLayerRef.current;
-    if (!nodeLayer) return;
-
-    const updateMapNodeLayerSize = () => {
-      const bounds = nodeLayer.getBoundingClientRect();
-      setMapNodeLayerSize({ width: bounds.width, height: bounds.height });
-    };
-
-    updateMapNodeLayerSize();
-
-    if (typeof ResizeObserver === "undefined") {
-      window.addEventListener("resize", updateMapNodeLayerSize);
-      return () => window.removeEventListener("resize", updateMapNodeLayerSize);
-    }
-
-    const observer = new ResizeObserver(updateMapNodeLayerSize);
-    observer.observe(nodeLayer);
-
-    return () => observer.disconnect();
-  }, []);
 
   const navigateWithLoading = useCallback(
     (route: string) => {
@@ -307,11 +296,28 @@ function RoleMapPage({ selectedCharacter }: RoleMapPageProps) {
     window.localStorage.removeItem(MAP_LAST_NODE_KEY);
     window.localStorage.removeItem(MAP_UNLOCK_ANIMATION_SCENE_KEY);
     window.localStorage.removeItem("inventorySlots");
+    clearDispositionProgress(selectedCharacter);
 
     const firstNodeKey = getRoleSteps(selectedCharacter)[0]?.nodeKey ?? null;
     setVisitedProgress(-1);
     setUnlockAnimationNodeKey(firstNodeKey);
     setActiveNodeKey(firstNodeKey);
+  }, [selectedCharacter]);
+
+  const unlockAllMapNodes = useCallback(() => {
+    if (!selectedCharacter || typeof window === "undefined") return;
+
+    const finalStepIndex = getRoleSteps(selectedCharacter).length - 1;
+    const finalNodeKey = getRoleSteps(selectedCharacter)[finalStepIndex]?.nodeKey ?? null;
+
+    window.localStorage.setItem(MAP_VISITED_PROGRESS_KEY, String(finalStepIndex));
+    if (finalNodeKey) {
+      window.localStorage.setItem(MAP_LAST_NODE_KEY, finalNodeKey);
+    }
+
+    setVisitedProgress(finalStepIndex);
+    setUnlockAnimationNodeKey(finalNodeKey);
+    setActiveNodeKey((currentNodeKey) => currentNodeKey ?? finalNodeKey);
   }, [selectedCharacter]);
 
   const handleMenuNavigation = useCallback(
@@ -325,6 +331,17 @@ function RoleMapPage({ selectedCharacter }: RoleMapPageProps) {
 
   const routeSteps = useMemo(
     () => getRoleSteps(selectedCharacter),
+    [selectedCharacter]
+  );
+  const finalStepIndex = routeSteps.length - 1;
+  const finalStepNodeKey = routeSteps[finalStepIndex]?.nodeKey ?? null;
+  const hasReachedFinalScene = visitedProgress >= finalStepIndex;
+  const finishRoute = useMemo(
+    () => buildRoleAwareRoute(OUTRO_CUTSCENE_ROUTE, selectedCharacter),
+    [selectedCharacter]
+  );
+  const phaseTrack = useMemo(
+    () => getStoryPhaseTrack(selectedCharacter),
     [selectedCharacter]
   );
   const unlockedThroughIndex = useMemo(
@@ -384,110 +401,42 @@ function RoleMapPage({ selectedCharacter }: RoleMapPageProps) {
       }),
     [masterMode, resolvedNodes]
   );
-  const shouldShowSchoolZone = selectedCharacter === "CS" || masterMode;
-  const schoolZoneNodes = useMemo(
-    () => visibleNodes.filter((node) => SCHOOL_ZONE_NODE_KEY_SET.has(node.key)),
-    [visibleNodes]
-  );
-  const nonSchoolZoneNodes = useMemo(
-    () => visibleNodes.filter((node) => !SCHOOL_ZONE_NODE_KEY_SET.has(node.key)),
-    [visibleNodes]
-  );
-  const isSchoolZoneUnlocked = schoolZoneNodes.some((node) => node.isUnlocked);
-  const latestUnlockedSchoolZoneNodeKey =
-    schoolZoneNodes.filter((node) => node.isUnlocked).at(-1)?.key ?? null;
-  const isSchoolZoneAvailable = shouldShowSchoolZone && schoolZoneNodes.length > 0;
-
-  const effectiveActiveNodeKey = useMemo<MapFocusKey | null>(() => {
-    if (activeNodeKey === SCHOOL_ZONE_FOCUS_KEY) {
-      return isSchoolZoneAvailable ? activeNodeKey : visibleNodes[0]?.key ?? null;
-    }
-
+  const effectiveActiveNodeKey = useMemo<MapNodeKey | null>(() => {
     if (activeNodeKey && visibleNodes.some((node) => node.key === activeNodeKey)) {
       return activeNodeKey;
     }
 
-    if (isSchoolZoneAvailable) {
-      return SCHOOL_ZONE_FOCUS_KEY;
-    }
-
     return visibleNodes[0]?.key ?? null;
-  }, [activeNodeKey, isSchoolZoneAvailable, visibleNodes]);
-
-  const isSchoolClusterOpen =
-    isSchoolZoneHovered || isSchoolClusterNodeKey(effectiveActiveNodeKey);
+  }, [activeNodeKey, visibleNodes]);
   const navigationNodes = useMemo<MapNodeNavPoint[]>(() => {
-    const buildNavPoint = (nodeKey: MapFocusKey, left: string, top: string) => ({
+    const buildNavPoint = (nodeKey: MapNodeKey, left: string, top: string) => ({
       nodeKey,
       x: Number.parseFloat(left),
       y: Number.parseFloat(top),
     });
 
-    if (!isSchoolZoneAvailable) {
-      return visibleNodes.map((node) =>
-        buildNavPoint(node.key, MAP_NODE_DEFINITIONS[node.key].position.left, MAP_NODE_DEFINITIONS[node.key].position.top)
-      );
-    }
-
-    if (!isSchoolClusterOpen) {
-      return [
-        ...nonSchoolZoneNodes.map((node) =>
-          buildNavPoint(
-            node.key,
-            MAP_NODE_DEFINITIONS[node.key].position.left,
-            MAP_NODE_DEFINITIONS[node.key].position.top
-          )
-        ),
-        buildNavPoint(
-          SCHOOL_ZONE_FOCUS_KEY,
-          SCHOOL_ZONE_POSITION.left,
-          SCHOOL_ZONE_POSITION.top
-        ),
-      ];
-    }
-
-    return [
-      ...nonSchoolZoneNodes.map((node) =>
-        buildNavPoint(
-          node.key,
-          MAP_NODE_DEFINITIONS[node.key].position.left,
-          MAP_NODE_DEFINITIONS[node.key].position.top
-        )
-      ),
-      ...schoolZoneNodes.map((node) =>
-        buildNavPoint(
-          node.key,
-          MAP_NODE_DEFINITIONS[node.key].position.left,
-          MAP_NODE_DEFINITIONS[node.key].position.top
-        )
-      ),
-    ];
-  }, [isSchoolClusterOpen, isSchoolZoneAvailable, nonSchoolZoneNodes, schoolZoneNodes, visibleNodes]);
+    return visibleNodes.map((node) =>
+      buildNavPoint(
+        node.key,
+        MAP_NODE_DEFINITIONS[node.key].position.left,
+        MAP_NODE_DEFINITIONS[node.key].position.top
+      )
+    );
+  }, [visibleNodes]);
 
   const activeNode =
-    effectiveActiveNodeKey && effectiveActiveNodeKey !== SCHOOL_ZONE_FOCUS_KEY
+    effectiveActiveNodeKey
       ? resolvedNodes.find((node) => node.key === effectiveActiveNodeKey) ?? null
       : null;
-  const activeSchoolZoneNode =
-    (latestUnlockedSchoolZoneNodeKey
-      ? resolvedNodes.find((node) => node.key === latestUnlockedSchoolZoneNodeKey)
-      : schoolZoneNodes[0]) ?? null;
-  const isSchoolZoneActive =
-    isSchoolZoneHovered || effectiveActiveNodeKey === SCHOOL_ZONE_FOCUS_KEY;
-  const isSchoolZoneHiddenForCluster =
-    isSchoolClusterOpen && effectiveActiveNodeKey !== SCHOOL_ZONE_FOCUS_KEY && !isSchoolZoneHovered;
   const activeStep =
     activeNode?.previewStepIndex !== null && activeNode?.previewStepIndex !== undefined
       ? routeSteps[activeNode.previewStepIndex]
       : null;
-  const activePanelTitle =
-    effectiveActiveNodeKey === SCHOOL_ZONE_FOCUS_KEY
-      ? "School Zone"
-      : activeStep?.sceneTitle ?? "Hock Lee Bus Riots";
+  const activePanelTitle = activeStep?.sceneTitle
+    ? stripMapTitlePhasePrefix(activeStep.sceneTitle)
+    : "Hock Lee Bus Riots";
   const activePanelSubtitle =
-    effectiveActiveNodeKey === SCHOOL_ZONE_FOCUS_KEY
-      ? "A volatile student network spanning the classroom, school lake, and school gates."
-      : activeStep?.sceneSubtitle ?? activeNode?.description ?? undefined;
+    activeStep?.sceneSubtitle ?? activeNode?.description ?? undefined;
   const markerSprite =
     CHARACTER_PRESENTATIONS[selectedCharacter].markerSprite;
 
@@ -498,35 +447,20 @@ function RoleMapPage({ selectedCharacter }: RoleMapPageProps) {
     },
     [navigateWithLoading]
   );
-  const getSchoolClusterOriginStyle = useCallback(
-    (nodeKey: MapNodeKey): CSSProperties => {
-      const nodePosition = MAP_NODE_DEFINITIONS[nodeKey].position;
-      const originX =
-        ((Number.parseFloat(SCHOOL_ZONE_POSITION.left) -
-          Number.parseFloat(nodePosition.left)) /
-          100) *
-        mapNodeLayerSize.width;
-      const originY =
-        ((Number.parseFloat(SCHOOL_ZONE_POSITION.top) -
-          Number.parseFloat(nodePosition.top)) /
-          100) *
-        mapNodeLayerSize.height;
-
-      return {
-        "--hl-school-node-origin-x": `${originX}px`,
-        "--hl-school-node-origin-y": `${originY}px`,
-        "--hl-school-node-delay": SCHOOL_CLUSTER_NODE_DELAYS[nodeKey] ?? "0ms",
-      } as CSSProperties;
-    },
-    [mapNodeLayerSize.height, mapNodeLayerSize.width]
-  );
+  const handleFinish = useCallback(() => {
+    navigateWithLoading(finishRoute);
+  }, [finishRoute, navigateWithLoading]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key.toLowerCase() === "u") {
+        event.preventDefault();
+        unlockAllMapNodes();
+        return;
+      }
+
       if (!activeNodeKey || navigationNodes.length === 0) {
-        const fallbackNodeKey = isSchoolZoneAvailable
-          ? SCHOOL_ZONE_FOCUS_KEY
-          : visibleNodes[0]?.key ?? null;
+        const fallbackNodeKey = visibleNodes[0]?.key ?? null;
         if (event.key.toLowerCase() === "s") {
           event.preventDefault();
           setMasterMode((previous) => !previous);
@@ -562,12 +496,6 @@ function RoleMapPage({ selectedCharacter }: RoleMapPageProps) {
       event.preventDefault();
 
       if (event.key === "Enter") {
-        if (effectiveActiveNodeKey === SCHOOL_ZONE_FOCUS_KEY) {
-          if (latestUnlockedSchoolZoneNodeKey) {
-            setActiveNodeKey(latestUnlockedSchoolZoneNodeKey);
-          }
-          return;
-        }
         handleActivateNode(activeNode);
         return;
       }
@@ -587,10 +515,9 @@ function RoleMapPage({ selectedCharacter }: RoleMapPageProps) {
     activeNodeKey,
     effectiveActiveNodeKey,
     handleActivateNode,
-    isSchoolZoneAvailable,
-    latestUnlockedSchoolZoneNodeKey,
     navigationNodes,
     resetMapProgress,
+    unlockAllMapNodes,
     visibleNodes,
   ]);
 
@@ -598,37 +525,31 @@ function RoleMapPage({ selectedCharacter }: RoleMapPageProps) {
     isRouteLoadingRef.current = isRouteLoading;
   }, [isRouteLoading]);
 
-  const renderResolvedNode = (
-    node: ResolvedMapNode,
-    options?: { isSchoolClusterNode?: boolean }
-  ) => {
+  const renderResolvedNode = (node: ResolvedMapNode) => {
     const nodeDefinition = MAP_NODE_DEFINITIONS[node.key];
     const isActive = activeNode?.key === node.key;
-    const isSchoolClusterNode = options?.isSchoolClusterNode ?? false;
-    const clusterStyle = isSchoolClusterNode ? getSchoolClusterOriginStyle(node.key) : null;
+    const isFinalReturnNode =
+      node.isUnlocked &&
+      node.previewStepIndex !== null &&
+      node.previewStepIndex === finalStepIndex &&
+      node.key === finalStepNodeKey &&
+      node.key === "home";
+    const actionLabel = isFinalReturnNode ? "Return Home" : "Visit";
 
     return (
       <div
         key={node.key}
-        className={`absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center text-center ${isSchoolClusterNode ? "hl-pixel-school-cluster-node" : ""
-          } ${isSchoolClusterNode && isSchoolClusterOpen ? "hl-pixel-school-cluster-node--expanded" : ""}`}
+        className="absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center text-center"
         style={{
           left: nodeDefinition.position.left,
           top: nodeDefinition.position.top,
-          zIndex: isActive ? 10 : isSchoolClusterNode ? 8 : 6,
-          ...(clusterStyle ?? {}),
+          zIndex: isActive ? 10 : 6,
         }}
         onMouseEnter={() => {
-          clearSchoolZoneHoverTimeout();
           setActiveNodeKey(node.key);
-          if (!isSchoolClusterNode) {
-            setIsSchoolZoneHovered(false);
-          }
         }}
         onClick={() => {
-          clearSchoolZoneHoverTimeout();
           setActiveNodeKey(node.key);
-          setIsSchoolZoneHovered(false);
           if (!node.isSelectable) return;
           handleActivateNode(node);
         }}
@@ -639,6 +560,11 @@ function RoleMapPage({ selectedCharacter }: RoleMapPageProps) {
         >
           {node.label}
         </div>
+        {isFinalReturnNode ? (
+          <div className="-mt-1 mb-2 relative z-[2] rounded-full border border-[#ffe45e] bg-[rgba(18,14,6,0.9)] px-2 py-0.5 text-[10px] uppercase tracking-[0.24em] text-[#ffe45e]">
+            Return
+          </div>
+        ) : null}
         <div className="hl-pixel-map-node-shell">
           <img
             src={nodeDefinition.image.src}
@@ -678,7 +604,7 @@ function RoleMapPage({ selectedCharacter }: RoleMapPageProps) {
             className="artifact-label artifact-button pixel-corners pop-in mt-2 flex w-auto items-center justify-center gap-2 rounded-full border border-[#7a1c1c] bg-[#f24747] px-3 py-1.5 text-sm uppercase tracking-[0.2em] hl-pixel-action-button"
             onClick={() => handleActivateNode(node)}
           >
-            Visit <span className="text-xs leading-none">↵</span>
+            {actionLabel} <span className="text-xs leading-none">↵</span>
           </button>
         ) : isActive ? (
           <div className="artifact-label pixel-corners pop-in mt-2 rounded-full border border-[#5f5f5f] bg-[rgba(45,45,45,0.92)] px-3 py-1.5 text-sm uppercase tracking-[0.2em] text-[#d0d0d0]">
@@ -691,16 +617,17 @@ function RoleMapPage({ selectedCharacter }: RoleMapPageProps) {
 
   return (
     <main
-      className="map-page relative h-screen w-screen overflow-hidden bg-black"
+      className="map-page relative min-h-screen h-dvh w-full overflow-hidden bg-black"
       aria-busy={isRouteLoading}
     >
       <aside className="scene-panel scene-panel-shell">
         <div className="scene-title-stack scene-title-swap">
-          <div className="pixel-corners--wrapper">
-            <div className="pixel-corners scene-title">{activePanelTitle}</div>
-          </div>
+          <SceneTitleWithCamera>{activePanelTitle}</SceneTitleWithCamera>
           <div className="pixel-corners--wrapper">
             <div className="pixel-corners scene-subtitle">{activePanelSubtitle}</div>
+          </div>
+          <div className="mt-2">
+            <SceneCameraButton />
           </div>
         </div>
         <div className="mt-3 flex items-center gap-3">
@@ -748,6 +675,22 @@ function RoleMapPage({ selectedCharacter }: RoleMapPageProps) {
         </div>
       </div>
 
+      {hasReachedFinalScene ? (
+        <div className="absolute bottom-[12.5rem] right-6 z-20 flex items-center">
+          <div className="ui-button-shell pixel-corners--wrapper">
+            <button
+              type="button"
+              className="ui-button ui-button--finish pixel-corners"
+              aria-label="Finish"
+              onClick={handleFinish}
+              disabled={isRouteLoading}
+            >
+              <span className="ui-button-text">FINISH</span>
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       <div
         className="map-timeline map-timeline--delay absolute bottom-6 left-6 right-6 z-10 overflow-visible"
       >
@@ -758,10 +701,10 @@ function RoleMapPage({ selectedCharacter }: RoleMapPageProps) {
                 className="hl-pixel-timeline-track"
                 aria-hidden="true"
                 style={{
-                  gridTemplateColumns: STORY_PHASE_TRACK.map((phase) => `${phase.span}fr`).join(" "),
+                  gridTemplateColumns: phaseTrack.map((phase) => `${phase.span}fr`).join(" "),
                 }}
               >
-                {STORY_PHASE_TRACK.map((phase, index) => (
+                {phaseTrack.map((phase, index) => (
                   <div
                     key={phase.label}
                     className="hl-pixel-timeline-track-segment"
@@ -769,9 +712,9 @@ function RoleMapPage({ selectedCharacter }: RoleMapPageProps) {
                       backgroundColor: phase.color,
                       borderTopLeftRadius: index === 0 ? "999px" : 0,
                       borderBottomLeftRadius: index === 0 ? "999px" : 0,
-                      borderTopRightRadius: index === STORY_PHASE_TRACK.length - 1 ? "999px" : 0,
+                      borderTopRightRadius: index === phaseTrack.length - 1 ? "999px" : 0,
                       borderBottomRightRadius:
-                        index === STORY_PHASE_TRACK.length - 1 ? "999px" : 0,
+                        index === phaseTrack.length - 1 ? "999px" : 0,
                     }}
                   >
                     <span className="hl-pixel-timeline-track-label">{phase.label}</span>
@@ -801,7 +744,9 @@ function RoleMapPage({ selectedCharacter }: RoleMapPageProps) {
                             : "hl-pixel-timeline-date-box--inactive"
                           }`}
                       >
-                        <div className="hl-pixel-timeline-date-text">{`Stop ${index + 1}`}</div>
+                        <div className="hl-pixel-timeline-date-text">
+                          {step.dateLabel ?? `Stop ${index + 1}`}
+                        </div>
                         <div
                           className={`hl-pixel-timeline-event-label ${isActive
                               ? "hl-pixel-timeline-event-label--active"
@@ -847,84 +792,12 @@ function RoleMapPage({ selectedCharacter }: RoleMapPageProps) {
         </div>
       ) : null}
 
-      <div ref={mapNodeLayerRef} className="absolute inset-0 z-[8]">
-        {isSchoolZoneAvailable ? (
-          <div
-            className={`absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center text-center hl-pixel-school-zone-node ${isSchoolZoneHiddenForCluster ? "hl-pixel-school-zone-node--content-hidden" : ""
-              }`}
-            style={{
-              left: SCHOOL_ZONE_POSITION.left,
-              top: SCHOOL_ZONE_POSITION.top,
-              zIndex: isSchoolZoneActive ? 9 : 7,
-              pointerEvents: "auto",
-            }}
-            onMouseEnter={() => {
-              if (!isSchoolZoneUnlocked) return;
-              clearSchoolZoneHoverTimeout();
-              setActiveNodeKey(SCHOOL_ZONE_FOCUS_KEY);
-              setIsSchoolZoneHovered(true);
-            }}
-            onMouseLeave={scheduleSchoolZoneHoverExit}
-            onClick={() => {
-              if (!isSchoolZoneUnlocked || !latestUnlockedSchoolZoneNodeKey) return;
-              clearSchoolZoneHoverTimeout();
-              setActiveNodeKey(latestUnlockedSchoolZoneNodeKey);
-            }}
-          >
-            {!isSchoolZoneHovered ? (
-              <div
-                className={`artifact-label mb-2 text-center text-sm sm:text-base hl-pixel-school-zone-label ${isSchoolZoneActive ? "artifact-label--active pixel-corners" : ""
-                  }`}
-              >
-                School Zone
-              </div>
-            ) : null}
-            <div className="hl-pixel-map-node-shell">
-              <div aria-hidden="true" className="hl-pixel-school-zone-hit-area" />
-              <div
-                aria-hidden="true"
-                className={`hl-pixel-school-zone-blob ${isSchoolZoneActive ? "hl-pixel-school-zone-blob--active" : ""
-                  } ${isSchoolZoneUnlocked ? "" : "hl-pixel-school-zone-blob--locked"}`}
-              />
-              {!isSchoolZoneHovered ? (
-                <img
-                  src="/map-nodes/schoolzone.png"
-                  alt="School Zone"
-                  className="map-location hl-pixel-map-node hl-pixel-school-zone-image hl-pixel-map-node--schoolzone"
-                  style={{
-                    filter: !isSchoolZoneUnlocked
-                      ? MAP_NODE_LOCKED_FILTER
-                      : isSchoolZoneActive
-                        ? "drop-shadow(2px 0 0 #ffff00) drop-shadow(-2px 0 0 #ffff00) drop-shadow(0 2px 0 #ffff00) drop-shadow(0 -2px 0 #ffff00) drop-shadow(2px 2px 0 #ffff00) drop-shadow(-2px 2px 0 #ffff00) drop-shadow(2px -2px 0 #ffff00) drop-shadow(-2px -2px 0 #ffff00)"
-                        : MAP_NODE_IDLE_FILTER,
-                  }}
-                  draggable={false}
-                />
-              ) : null}
-            </div>
-            {!isSchoolZoneHovered && !isSchoolZoneUnlocked && isSchoolZoneActive ? (
-              <div className="artifact-label pixel-corners pop-in mt-2 rounded-full border border-[#5f5f5f] bg-[rgba(45,45,45,0.92)] px-3 py-1.5 text-sm uppercase tracking-[0.2em] text-[#d0d0d0]">
-                Locked
-              </div>
-            ) : !isSchoolZoneHovered &&
-              effectiveActiveNodeKey === SCHOOL_ZONE_FOCUS_KEY &&
-              activeSchoolZoneNode?.isSelectable ? (
-              <div className="artifact-label pixel-corners pop-in mt-2 rounded-full border border-[#c58b19] bg-[rgba(41,24,4,0.92)] px-3 py-1.5 text-sm uppercase tracking-[0.2em] text-[#ffe45e]">
-                Open Cluster
-              </div>
-            ) : null}
-          </div>
-        ) : null}
-        {nonSchoolZoneNodes.map((node) => renderResolvedNode(node))}
-        {isSchoolZoneAvailable
-          ? schoolZoneNodes.map((node) =>
-            renderResolvedNode(node, { isSchoolClusterNode: true })
-          )
-          : null}
+      <div className="absolute inset-0 z-[8]">
+        {visibleNodes.map((node) => renderResolvedNode(node))}
       </div>
 
       <div className="absolute right-6 top-6 z-10 inventory-rise-in">
-        <DispositionRadarPanel />
+        <DispositionRadarPanel selectedCharacterCode={selectedCharacter} />
       </div>
 
       <GameMenuOverlay
@@ -948,12 +821,12 @@ function RoleMapPage({ selectedCharacter }: RoleMapPageProps) {
               Map Guide
             </div>
             <p className="mt-3 text-2xl leading-relaxed sm:text-3xl">
-              Track the story through the timeline and select any unlocked stop on the map.
+              Use the map and timeline to jump to any unlocked part of the story.
             </p>
             <ul className="mt-4 list-disc space-y-2 pl-5 text-xl sm:text-3xl">
-              <li>Click an unlocked location or timeline stop to focus it.</li>
-              <li>Press Enter or use Visit to enter the active scene.</li>
-              <li>Use arrow keys to move between map nodes.</li>
+              <li>Click an unlocked place or timeline stop to focus on it.</li>
+              <li>Press Enter or choose Visit to enter the selected scene.</li>
+              <li>Use the arrow keys to move across the map.</li>
             </ul>
             <div className="mt-6 flex justify-end">
               <button
@@ -961,7 +834,7 @@ function RoleMapPage({ selectedCharacter }: RoleMapPageProps) {
                 className="artifact-button pixel-corners rounded-full border border-[#2a1400] bg-[#ffe7b0] px-5 py-2 text-lg uppercase tracking-[0.16em] text-[#2a1400] sm:text-2xl"
                 onClick={() => setIsHelpOpen(false)}
               >
-                Ok, got it!
+                Okay
               </button>
             </div>
           </div>
@@ -971,8 +844,8 @@ function RoleMapPage({ selectedCharacter }: RoleMapPageProps) {
       {isRouteLoading ? (
         <div className="scene-route-loading-overlay" role="status" aria-live="polite">
           <div className="scene-route-loading-panel pixel-corners">
-            <div className="scene-route-loading-title">Loading Next Scene</div>
-            <div className="scene-route-loading-subtitle">Compiling next page...</div>
+            <div className="scene-route-loading-title">Loading Scene</div>
+            <div className="scene-route-loading-subtitle">Getting the next scene ready...</div>
             <div className="scene-route-loading-dots" aria-hidden="true">
               <span className="scene-route-loading-dot" />
               <span className="scene-route-loading-dot" />

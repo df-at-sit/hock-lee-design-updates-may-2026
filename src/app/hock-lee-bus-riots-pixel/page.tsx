@@ -57,12 +57,11 @@ export default function HockLeeBusRiotsPixelPage() {
               }}
             >
               <p className="text-2xl leading-tight sm:text-3xl">
-                In 1955, labor unrest at the Hock Lee Amalgamated Bus Company grew into one of
-                Singapore&apos;s most significant flashpoints of anti-colonial resistance. Workers
-                striking for better conditions drew support from students, unions, and political
-                activists across the city. Tensions escalated as police, protesters, and
-                bystanders clashed in the streets around the bus depot. This story follows how a
-                labor dispute became a defining political crisis in postwar Singapore.
+                In 1955, a dispute at the Hock Lee Bus Company grew into a major moment in
+                Singapore&apos;s history. Bus workers were fighting for better pay and fairer
+                treatment. As tensions rose, students, unions, politicians, and the police were
+                all drawn in. This story shows how one labour dispute became a citywide crisis
+                during Singapore&apos;s struggle for self-government.
               </p>
             </div>
           </div>
