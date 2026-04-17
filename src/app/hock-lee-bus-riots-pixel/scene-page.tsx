@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { BaseSceneShell, type BaseSceneConfig } from "./base-scene-shell";
 import {
@@ -8,11 +8,8 @@ import {
   PIXEL_SCENE_VARIANTS,
   type PixelSceneVariantKey,
 } from "./scene-variants";
-import {
-  getStoredCharacterCode,
-  persistCharacterCode,
-  resolveSceneConfigForRole,
-} from "./scene-config";
+import { resolveSceneConfigForRole } from "./scene-config";
+import { useSelectedCharacterCode } from "./use-selected-character-code";
 
 type HockLeeScenePageProps = {
   sceneNumber: number;
@@ -37,11 +34,7 @@ type RoleAwareScenePageProps = {
 function RoleAwareScenePage({ baseConfig }: RoleAwareScenePageProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const selectedCharacter = getStoredCharacterCode(searchParams.get("role"));
-
-  useEffect(() => {
-    persistCharacterCode(selectedCharacter);
-  }, [selectedCharacter]);
+  const selectedCharacter = useSelectedCharacterCode(searchParams.get("role"));
 
   const resolvedConfig = useMemo(() => {
     return resolveSceneConfigForRole(baseConfig, selectedCharacter, pathname);

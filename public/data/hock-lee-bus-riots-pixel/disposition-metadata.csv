@@ -1,0 +1,67 @@
+entity_type,entity_id,label,empathy,courage,curiosity,tenacity,optimism
+artifact,alexandra-road-riot-control-truck,Riot Control Truck,38,74,66,64,30
+artifact,alexandra-road-police-turret-bell,Police Turret Bell,34,72,70,66,28
+artifact,alexandra-road-police-shield,Police Shield,30,76,62,70,24
+artifact,bus-depot-hock-lee-bus,Hock Lee Bus,72,60,74,68,52
+artifact,bus-worker-home-driver-badge,Driver Badge 143,70,72,68,82,46
+artifact,bus-worker-home-hand-fan,Rattan Hand Fan,76,44,58,62,60
+artifact,bus-worker-home-tingkat,Tiffin Carrier Tingkat,82,48,62,74,64
+artifact,civil-servant-home-parker-pen,Parker Fountain Pen,56,48,70,68,58
+artifact,civil-servant-home-poster,Singapore Travel Poster,50,42,64,44,72
+artifact,classroom-radio,Classroom Radio,50,60,84,62,70
+artifact,command-center-radio,Command Center Radio,48,58,82,64,46
+artifact,government-office-civil-servant-typewriter,Office Typewriter,52,46,76,70,56
+artifact,government-office-david-marshall-pipes,David Marshall Pipes,42,60,70,52,48
+artifact,labour-front-manifesto,Labour Front Manifesto,58,70,88,66,74
+artifact,petir-weekly,Petir Weekly,52,56,84,58,68
+artifact,student-home-kerosene-lamp,Kerosene Lamp,74,50,70,72,58
+artifact,student-home-textbook,Student Textbook,60,54,88,68,66
+artifact,student-riot-woodblock-print,Student Riot Woodblock Print,68,74,82,66,54
+npc,alexandra-road-american-journalist,American Journalist on Alexandra Road,58,74,88,62,34
+npc,alexandra-road-asian-reporter,Asian Reporter on Alexandra Road,60,70,84,60,38
+npc,alexandra-road-lee-chim-siong-east,Lee Chim Siong on Alexandra Road,64,82,70,82,40
+npc,alexandra-road-police-front-1,Police Sergeant on Alexandra Road,26,72,42,70,28
+npc,alexandra-road-student-union-1-west,Student Organizer on Alexandra Road,68,78,64,76,46
+npc,bus-depot-bus-boss-west,Bus Boss at the Depot,30,58,54,68,36
+npc,bus-depot-feng-swee-suan-east-south,Feng Swee Suan at the Depot,70,84,60,86,52
+npc,bus-depot-feng-swee-suan-gate,Feng Swee Suan at the Gate,72,86,56,90,48
+npc,city-hall-british-officer-south,Commander Albert,54,58,68,62,44
+npc,city-hall-british-officer-west,Major Alfred,52,56,66,60,42
+npc,city-hall-david-marshall,David Marshall at City Hall,68,74,70,72,60
+npc,classroom-teacher,Classroom Teacher,74,66,82,68,72
+npc,command-center-civil-servant-right,Civil Servant at the Command Center,62,58,74,70,40
+npc,command-center-david-marshall-south,David Marshall at the Command Center,68,80,76,78,50
+npc,command-center-ringing-phone,Telephone Report,48,74,80,76,36
+npc,command-center-second-phone,Operations Line,46,68,78,74,38
+npc,funeral-asian-reporter-4,Fellow Reporter at the Funeral,84,68,78,72,30
+npc,government-office-bus-boss-west,Bus Company Boss in Government Office,34,60,58,70,38
+npc,government-office-david-marshall-south,David Marshall in Government Office,70,76,72,70,58
+npc,government-office-feng-swee-suan-east,Feng Swee Suan in Government Office,74,80,64,84,48
+npc,government-office-lee-kuan-yew-south,Lee Kuan Yew in Government Office,58,68,82,70,52
+npc,home-bus-worker-return-wife-south,Aminah After the Riots,92,68,60,80,48
+npc,home-bus-worker-wife-south,Aminah Before the Riots,90,62,64,78,56
+npc,home-chinese-student-return-sibling,Ong Kim Wah After the Riots,84,70,70,74,42
+npc,home-chinese-student-sibling,Ong Kim Wah at Home,82,70,68,76,50
+npc,home-civil-servant-wife-south,Lakshmi,88,60,66,72,64
+npc,kallang-airport-civil-servant-1,Airport Aide,54,58,72,66,46
+npc,kallang-airport-civil-servant-2,Private Secretary,52,60,78,72,48
+npc,kallang-airport-civil-servant-3,Ground Officer,56,58,70,68,44
+npc,kallang-airport-david-marshall-south,David Marshall at Kallang Airport,66,82,72,80,62
+npc,kallang-airport-press-reporter,Airport Journalist,60,72,86,64,44
+npc,kkhospital-injured-bus-worker,Injured Colleague,92,74,60,84,42
+npc,market-bus-worker-east,Muthu Krishnan,74,72,58,80,38
+npc,market-bus-worker-south,Tan Ah Seng,72,70,56,82,36
+npc,market-bus-worker-west,Hassan bin Ali,70,68,54,78,34
+npc,market-devan-nair,Devan Nair,74,78,70,80,56
+npc,market-fisherman-south,Pak Hamid,72,56,62,68,40
+npc,market-food-seller-east,Mdm Lee,70,58,60,72,44
+npc,negotiation-bus-boss-west,Bus Boss in Negotiation Hall,34,60,62,70,42
+npc,negotiation-david-marshall-south,David Marshall in Negotiation Hall,72,78,72,76,60
+npc,negotiation-feng-swee-suan-south,Feng Swee Suan in Negotiation Hall,76,84,66,88,50
+npc,negotiation-lee-kuan-yew-south,Lee Kuan Yew in Negotiation Hall,60,70,84,72,50
+npc,school-gates-american-journalist,Reporter at School Gates,58,70,86,64,38
+npc,school-gates-headmaster,Headmaster at School Gates,40,56,68,72,34
+npc,school-gates-teacher,Teacher at School Gates,62,60,70,66,40
+npc,school-lake-monitor-right,Class Monitor at School Lake,74,74,66,78,56
+npc,school-lake-organizer-left,Student Organizer at School Lake,76,82,68,80,58
+npc,school-lake-sibling,Ong Kim Wah at School Lake,80,68,64,72,46

@@ -11,59 +11,19 @@ import {
 import { CHARACTER_LABELS, type CharacterCode } from "../scenes";
 import {
   buildRoleAwareRoute,
+  CHARACTER_PRESENTATIONS,
   SELECTED_CHARACTER_STORAGE_KEY,
 } from "../story-data";
+import {
+  CHARACTER_JOURNEY_CONTENT,
+  CHARACTER_ORDER,
+  CHARACTER_ROLE_LABELS,
+} from "../character-content";
+import { clearAllDispositionProgress } from "../disposition-state";
 import { HOCK_LEE_MAP_ROUTE } from "../story-paths";
+import { SceneTitleWithCamera } from "../scene-title-with-camera";
 
 const INVENTORY_STORAGE_KEY = "inventorySlots";
-
-type CharacterOption = {
-  id: CharacterCode;
-  sprite: string;
-  alt: string;
-  portraitBackground: string;
-  quote: string;
-  mission: string[];
-};
-
-const CHARACTER_OPTIONS: CharacterOption[] = [
-  {
-    id: "BW",
-    sprite: "/npcfigures/busworker/south.png",
-    alt: "Bus worker sprite",
-    portraitBackground: "#efe6dc",
-    quote: "I need to make sure the depot workers are heard.",
-    mission: [
-      "Track how low pay, long shifts, and company decisions push workers toward action.",
-      "Observe the bus depot, union pressure, and how unrest grows on the ground.",
-      "Document what workers risk when the dispute turns public and political.",
-    ],
-  },
-  {
-    id: "CIV",
-    sprite: "/npcfigures/civilservant/Civil%20Servant_0001.webp",
-    alt: "Civil servant sprite",
-    portraitBackground: "#f1ece5",
-    quote: "I am here to understand the crisis before it spins out of control.",
-    mission: [
-      "See how the colonial government and new local leaders respond to rising unrest.",
-      "Follow reports, official decisions, and the pressure to maintain public order.",
-      "Piece together how political reform, labor demands, and fear of disorder collide.",
-    ],
-  },
-  {
-    id: "CS",
-    sprite: "/npcfigures/riotfigures/Student%20Union/Student-Riot_South.webp",
-    alt: "Chinese student sprite",
-    portraitBackground: "#ecebcf",
-    quote: "The schools are part of this story too, and students feel every shift.",
-    mission: [
-      "Witness the Hock Lee tensions through student networks and Chinese-medium schools.",
-      "Trace how solidarity, anger, and activism move from classrooms into the streets.",
-      "Understand why students become part of a wider anti-colonial struggle.",
-    ],
-  },
-];
 
 export default function ChooseYourCharacterPage() {
   const router = useRouter();
@@ -97,14 +57,13 @@ export default function ChooseYourCharacterPage() {
     };
   }, []);
 
-  const selectedOption =
-    CHARACTER_OPTIONS.find((option) => option.id === selectedCharacter) ?? CHARACTER_OPTIONS[0];
-  const selectedIndex = CHARACTER_OPTIONS.findIndex((option) => option.id === selectedOption.id);
+  const selectedOption = CHARACTER_JOURNEY_CONTENT[selectedCharacter];
+  const selectedIndex = CHARACTER_ORDER.findIndex((character) => character === selectedCharacter);
 
   const handleStepCharacter = (direction: -1 | 1) => {
     const nextIndex =
-      (selectedIndex + direction + CHARACTER_OPTIONS.length) % CHARACTER_OPTIONS.length;
-    setSelectedCharacter(CHARACTER_OPTIONS[nextIndex].id);
+      (selectedIndex + direction + CHARACTER_ORDER.length) % CHARACTER_ORDER.length;
+    setSelectedCharacter(CHARACTER_ORDER[nextIndex]);
   };
 
   const handleBack = () => {
@@ -124,6 +83,7 @@ export default function ChooseYourCharacterPage() {
     window.localStorage.removeItem(MAP_VISITED_PROGRESS_KEY);
     window.localStorage.removeItem(MAP_UNLOCK_ANIMATION_SCENE_KEY);
     window.localStorage.removeItem(INVENTORY_STORAGE_KEY);
+    clearAllDispositionProgress();
 
     startTransition(() => {
       router.push(buildRoleAwareRoute(HOCK_LEE_MAP_ROUTE, selectedCharacter));
@@ -135,9 +95,7 @@ export default function ChooseYourCharacterPage() {
       <div className="hl-character-select-stage">
         <div className="hl-character-select-header">
           <div className="scene-title-stack">
-            <div className="pixel-corners--wrapper">
-              <div className="pixel-corners scene-title">Select Player</div>
-            </div>
+            <SceneTitleWithCamera>Choose A Character</SceneTitleWithCamera>
           </div>
         </div>
 
@@ -150,14 +108,15 @@ export default function ChooseYourCharacterPage() {
                   data-collapsed="false"
                 >
                   <div className="scene-title-stack hl-character-select-panel-stack">
-                    <div className="pixel-corners--wrapper hl-character-select-role-shell">
-                      <div className="pixel-corners scene-title hl-character-select-role-title">
-                        {CHARACTER_LABELS[selectedOption.id].toUpperCase()}
-                      </div>
-                    </div>
+                    <SceneTitleWithCamera
+                      titleClassName="hl-character-select-role-title"
+                      wrapperClassName="hl-character-select-role-shell"
+                    >
+                      {CHARACTER_ROLE_LABELS[selectedCharacter].toUpperCase()}
+                    </SceneTitleWithCamera>
                     <div className="pixel-corners--wrapper hl-character-select-mission-label-shell">
                       <div className="pixel-corners scene-subtitle hl-character-select-mission-label">
-                        Mission
+                        MISSION
                       </div>
                     </div>
                   </div>
@@ -177,28 +136,30 @@ export default function ChooseYourCharacterPage() {
             <div className="hl-character-select-figure-stage">
               <div className="npc-chat-bubble-shell hl-character-select-chat-bubble">
                 <div className="npc-chat-bubble pixel-corners">
+                  <span className="npc-chat-speaker">
+                    {CHARACTER_PRESENTATIONS[selectedCharacter].playerFullName}
+                  </span>
                   <span className="npc-chat-text">{selectedOption.quote}</span>
                 </div>
               </div>
               <Image
-                alt={selectedOption.alt}
+                alt={CHARACTER_PRESENTATIONS[selectedCharacter].playerAlt}
                 className="hl-character-select-figure"
-                height={520}
-                priority
-                src={selectedOption.sprite}
-                width={300}
+                draggable={false}
+                src={CHARACTER_PRESENTATIONS[selectedCharacter].markerSprite}
+                unoptimized
+                width={460}
+                height={460}
               />
-              <div className="hl-character-select-figure-shadow" aria-hidden="true" />
             </div>
             <div className="hl-character-select-mission-nav" aria-label="Switch role">
               <button
-                aria-label={`Previous role: ${
-                  CHARACTER_LABELS[
-                    CHARACTER_OPTIONS[
-                      (selectedIndex - 1 + CHARACTER_OPTIONS.length) % CHARACTER_OPTIONS.length
-                    ].id
+                aria-label={`Previous role: ${CHARACTER_LABELS[
+                  CHARACTER_ORDER[
+                    (selectedIndex - 1 + CHARACTER_ORDER.length) % CHARACTER_ORDER.length
                   ]
-                }`}
+                ]
+                  }`}
                 className="pixel-corners hl-character-select-mission-arrow hl-character-select-mission-arrow--prev"
                 onClick={() => handleStepCharacter(-1)}
                 type="button"
@@ -206,9 +167,8 @@ export default function ChooseYourCharacterPage() {
                 <span aria-hidden="true" className="hl-character-select-mission-arrow-icon" />
               </button>
               <button
-                aria-label={`Next role: ${
-                  CHARACTER_LABELS[CHARACTER_OPTIONS[(selectedIndex + 1) % CHARACTER_OPTIONS.length].id]
-                }`}
+                aria-label={`Next role: ${CHARACTER_LABELS[CHARACTER_ORDER[(selectedIndex + 1) % CHARACTER_ORDER.length]]
+                  }`}
                 className="pixel-corners hl-character-select-mission-arrow hl-character-select-mission-arrow--next"
                 onClick={() => handleStepCharacter(1)}
                 type="button"
@@ -223,8 +183,8 @@ export default function ChooseYourCharacterPage() {
             className="hl-character-select-picker"
             role="radiogroup"
           >
-            {CHARACTER_OPTIONS.map((option, index) => {
-              const isSelected = option.id === selectedCharacter;
+            {CHARACTER_ORDER.map((characterCode, index) => {
+              const isSelected = characterCode === selectedCharacter;
               const portraitVars = {
                 "--hl-character-portrait-bg": isSelected ? "#e97443" : "#a6d9fc",
                 "--hl-character-portrait-frame": isSelected ? "#ffd24a" : "#6f99b5",
@@ -235,18 +195,17 @@ export default function ChooseYourCharacterPage() {
 
               return (
                 <div
-                  key={option.id}
-                  className={`pixel-corners--wrapper hl-character-select-portrait-shell ${
-                    index === 2 ? "hl-character-select-portrait-shell--wide" : ""
-                  }`}
+                  key={characterCode}
+                  className={`pixel-corners--wrapper hl-character-select-portrait-shell ${index === 2 ? "hl-character-select-portrait-shell--wide" : ""
+                    }`}
                   data-selected={isSelected}
                   style={portraitVars}
                 >
                   <button
                     aria-checked={isSelected}
-                    aria-label={CHARACTER_LABELS[option.id]}
+                    aria-label={CHARACTER_LABELS[characterCode]}
                     className="pixel-corners hl-character-select-portrait"
-                    onClick={() => setSelectedCharacter(option.id)}
+                    onClick={() => setSelectedCharacter(characterCode)}
                     role="radio"
                     type="button"
                   >
@@ -254,12 +213,14 @@ export default function ChooseYourCharacterPage() {
                       alt=""
                       aria-hidden="true"
                       className="hl-character-select-portrait-image"
-                      height={120}
-                      src={option.sprite}
-                      width={120}
+                      draggable={false}
+                      src={CHARACTER_PRESENTATIONS[characterCode].markerSprite}
+                      unoptimized
+                      width={140}
+                      height={140}
                     />
                     <span className="hl-character-select-portrait-name">
-                      {CHARACTER_LABELS[option.id]}
+                      <strong>{CHARACTER_ROLE_LABELS[characterCode]}</strong>
                     </span>
                   </button>
                 </div>
@@ -286,7 +247,7 @@ export default function ChooseYourCharacterPage() {
               onClick={handleSelect}
               type="button"
             >
-              {isPending ? "Loading..." : "Select"}
+              {isPending ? "Loading..." : "Start Story"}
             </button>
           </div>
         </div>

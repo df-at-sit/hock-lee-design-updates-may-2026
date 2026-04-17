@@ -1,5 +1,5 @@
-import { RoleCutscenePage } from "../../role-cutscene-page";
+import { EndingPage } from "../../ending-page";
 
 export default function HockLeeOutroCutscenePage() {
-  return <RoleCutscenePage kind="outro" />;
+  return <EndingPage />;
 }

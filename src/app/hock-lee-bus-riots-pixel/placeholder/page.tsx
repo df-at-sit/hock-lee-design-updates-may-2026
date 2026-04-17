@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { DispositionRadarPanel } from "../disposition-radar-panel";
 import { GameMenuOverlay } from "../game-menu-overlay";
+import { SceneCameraButton, SceneTitleWithCamera } from "../scene-title-with-camera";
 
 type Direction =
     | "north"
@@ -22,6 +23,8 @@ const CLICK_WALK_SPEED = 8;
 const WALK_FRAME_COUNT = 8;
 const WALK_FRAME_MS = 110;
 const GRID_SIZE = 28;
+const PLAYER_CHARACTER_LABEL_TOP_OFFSET = 6;
+const PLAYER_CHARACTER_VISUAL_SCALE_BUMP = 1.05;
 
 type Point = { x: number; y: number };
 
@@ -145,7 +148,6 @@ export default function Scene2Storehall() {
     );
     const [direction, setDirection] = useState<Direction>("south");
     const [nearArtifactIndex, setNearArtifactIndex] = useState<number | null>(null);
-    const [isNearExit, setIsNearExit] = useState(false);
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [targetPosition, setTargetPosition] = useState<{
@@ -173,7 +175,6 @@ export default function Scene2Storehall() {
     >("take");
     const [chatInput, setChatInput] = useState("");
     const nearArtifactIndexRef = useRef<number | null>(null);
-    const isNearExitRef = useRef(false);
     const isDrawerOpenRef = useRef(false);
     const isMenuOpenRef = useRef(false);
     const drawerFocusRef = useRef<"take" | "leave" | "chat" | "close">("take");
@@ -189,7 +190,6 @@ export default function Scene2Storehall() {
     });
     const characterRef = useRef<HTMLImageElement | null>(null);
     const artifactRefs = useRef<(HTMLImageElement | null)[]>([]);
-    const exitRef = useRef<HTMLDivElement | null>(null);
     const router = useRouter();
 
     const isWalking =
@@ -202,6 +202,8 @@ export default function Scene2Storehall() {
         );
         return 1 + progress;
     }, [position.y, viewportHeight]);
+    const renderedCharacterScale =
+        characterScale * PLAYER_CHARACTER_VISUAL_SCALE_BUMP;
     const spriteSrc = useMemo(() => {
         if (!isWalking) {
             return `/character-figures/rajivmenon/${direction}.png`;
@@ -389,10 +391,6 @@ export default function Scene2Storehall() {
     }, []);
 
     useEffect(() => {
-        isNearExitRef.current = isNearExit;
-    }, [isNearExit]);
-
-    useEffect(() => {
         const nextX = window.innerWidth * 0.55;
         const nextY = window.innerHeight * 0.7;
         const maxX = Math.max(0, window.innerWidth - CHARACTER_SIZE);
@@ -480,10 +478,6 @@ export default function Scene2Storehall() {
             }
 
             if (event.key === "Enter") {
-                if (isNearExitRef.current) {
-                    router.push("/archive/map/1961");
-                    return;
-                }
                 if (nearArtifactIndexRef.current !== null) {
                     setActiveArtifactIndex(nearArtifactIndexRef.current);
                     setTakeMessage("");
@@ -749,11 +743,9 @@ export default function Scene2Storehall() {
 
     useEffect(() => {
         const character = characterRef.current;
-        const exitZone = exitRef.current;
         if (!character) return;
 
         const characterRect = character.getBoundingClientRect();
-        const exitRect = exitZone?.getBoundingClientRect();
 
         const characterCenter = {
             x: characterRect.left + characterRect.width / 2,
@@ -783,17 +775,6 @@ export default function Scene2Storehall() {
                 ? closestIndex
                 : null
         );
-
-        if (exitRect) {
-            const exitCenter = {
-                x: exitRect.left + exitRect.width / 2,
-                y: exitRect.top + exitRect.height / 2,
-            };
-            const exitDx = characterCenter.x - exitCenter.x;
-            const exitDy = characterCenter.y - exitCenter.y;
-            const exitDistance = Math.hypot(exitDx, exitDy);
-            setIsNearExit(exitDistance <= PROXIMITY_THRESHOLD);
-        }
     }, [position]);
 
     return (
@@ -868,32 +849,20 @@ export default function Scene2Storehall() {
         >
             <aside className="scene-panel scene-panel-shell" data-ui="true">
                 <div className="scene-title-stack">
-                    <div className="pixel-corners--wrapper">
-                        <div className="pixel-corners scene-title">{sceneTitle}</div>
-                    </div>
+                    <SceneTitleWithCamera>{sceneTitle}</SceneTitleWithCamera>
                     <div className="pixel-corners--wrapper">
                         <div className="pixel-corners scene-subtitle">{sceneSubtitle}</div>
                     </div>
-                </div>
-                <div className="mt-2" data-ui="true">
-                    <img
-                        src="/character-profile-pics/merlion.png"
-                        alt="Merlion"
-                        className="select-none"
-                        style={{
-                            width: "64px",
-                            height: "64px",
-                            objectFit: "cover",
-                        }}
-                        draggable={false}
-                    />
+                    <div className="mt-2" data-ui="true">
+                        <SceneCameraButton />
+                    </div>
                 </div>
             </aside>
             <div
                 className="moving-char-label absolute z-10 text-center text-2xl sm:text-3xl character-drop-in"
                 style={{
                     left: `${position.x}px`,
-                    top: `${position.y - 8 - CHARACTER_SIZE * (characterScale - 1)}px`,
+                    top: `${position.y + PLAYER_CHARACTER_LABEL_TOP_OFFSET - CHARACTER_SIZE * (renderedCharacterScale - 1)}px`,
                     width: `${CHARACTER_SIZE}px`,
                     transform: "none",
                     pointerEvents: "none",
@@ -913,7 +882,7 @@ export default function Scene2Storehall() {
                     width: `${CHARACTER_SIZE}px`,
                     height: `${CHARACTER_SIZE}px`,
                     imageRendering: "pixelated",
-                    transform: `scale(${characterScale})`,
+                    transform: `scale(${renderedCharacterScale})`,
                     transformOrigin: "bottom center",
                     filter:
                         "drop-shadow(1px 0 0 #ff7700) drop-shadow(-1px 0 0 #ff7700) drop-shadow(0 1px 0 #ff7700) drop-shadow(0 -1px 0 #ff7700) drop-shadow(1px 1px 0 #ff7700) drop-shadow(-1px 1px 0 #ff7700) drop-shadow(1px -1px 0 #ff7700) drop-shadow(-1px -1px 0 #ff7700)",
@@ -973,31 +942,6 @@ export default function Scene2Storehall() {
                     Edit mode: click to add points, click first point to close
                 </div>
             ) : null}
-            <div
-                ref={exitRef}
-                className="absolute right-6 top-1/2 -translate-y-1/2 exit-slide-in"
-                style={{
-                    height: "50%",
-                    display: "flex",
-                    alignItems: "center",
-                }}
-                data-ui="true"
-            >
-                <div
-                    style={{
-                        padding: "12px 16px",
-                        fontFamily: "\"PPNeueBit Bold\", \"PPNeueBit\", Arial, sans-serif",
-                        fontSize: "2.5rem",
-                        color: isNearExit ? "#30346d" : "#ffffff",
-                        background: "transparent",
-                        filter: isNearExit
-                            ? "drop-shadow(1px 0 0 #ffff00) drop-shadow(-1px 0 0 #ffff00) drop-shadow(0 1px 0 #ffff00) drop-shadow(0 -1px 0 #ffff00) drop-shadow(1px 1px 0 #ffff00) drop-shadow(-1px 1px 0 #ffff00) drop-shadow(1px -1px 0 #ffff00) drop-shadow(-1px -1px 0 #ffff00) drop-shadow(0 -2px 6px rgba(255, 255, 0, 0.7)) drop-shadow(0 -6px 12px rgba(255, 255, 0, 0.35))"
-                            : "none",
-                    }}
-                >
-                    EXIT →
-                </div>
-            </div>
             {artifacts.map((artifact, index) => {
                 const isNear = nearArtifactIndex === index;
                 return (

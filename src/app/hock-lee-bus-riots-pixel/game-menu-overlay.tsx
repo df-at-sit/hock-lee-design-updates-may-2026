@@ -22,8 +22,7 @@ export function GameMenuOverlay({
             onClick={onClose}
         >
             <div
-                className="pixel-corners w-full max-w-[400px] border border-[#9d4a1d] bg-[#ed7c42] p-6 text-[#2a1400]"
-                style={{ position: "relative", fontFamily: MENU_FONT }}
+                className="relative w-full max-w-[680px]"
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="game-menu-title"
@@ -38,31 +37,36 @@ export function GameMenuOverlay({
                 >
                     ×
                 </button>
-                <div id="game-menu-title" className="artifact-label text-center text-4xl sm:text-6xl">
-                    Game Menu
-                </div>
-                <div className="mt-6 flex flex-col items-center justify-center gap-4">
-                    <button
-                        type="button"
-                        className="artifact-button pixel-corners w-full max-w-[18rem] rounded-full border border-[#2a1400] bg-[#ffe7b0] px-6 py-3 text-lg uppercase tracking-[0.16em] text-[#2a1400] sm:text-2xl"
-                        onClick={() => onNavigate("/hock-lee-bus-riots-pixel")}
-                    >
-                        Back to Game Menu
-                    </button>
-                    <button
-                        type="button"
-                        className="artifact-button pixel-corners w-full max-w-[18rem] rounded-full border border-[#2a1400] bg-[#ffe7b0] px-6 py-3 text-lg uppercase tracking-[0.16em] text-[#2a1400] sm:text-2xl"
-                        onClick={() => onNavigate("/hock-lee-bus-riots-pixel/choose-your-character")}
-                    >
-                        Select Another Character
-                    </button>
-                    <button
-                        type="button"
-                        className="artifact-button pixel-corners w-full max-w-[18rem] rounded-full border border-[#2a1400] bg-[#2a1400] px-6 py-3 text-lg uppercase tracking-[0.16em] text-[#fff4dc] sm:text-2xl"
-                        onClick={() => onNavigate("/")}
-                    >
-                        Exit Game
-                    </button>
+                <div
+                    className="pixel-corners w-full border border-[#9d4a1d] bg-[#ed7c42] p-6 text-[#2a1400]"
+                    style={{ fontFamily: MENU_FONT }}
+                >
+                    <div id="game-menu-title" className="artifact-label text-center text-4xl sm:text-6xl">
+                        Pause Menu
+                    </div>
+                    <div className="mt-6 flex flex-col items-center justify-center gap-4">
+                        <button
+                            type="button"
+                            className="artifact-button pixel-corners w-full max-w-[600px] rounded-full border border-[#2a1400] bg-[#ffe7b0] px-6 py-3 text-lg uppercase tracking-[0.16em] text-[#2a1400] sm:text-2xl"
+                            onClick={() => onNavigate("/hock-lee-bus-riots-pixel")}
+                        >
+                            Back to Start
+                        </button>
+                        <button
+                            type="button"
+                            className="artifact-button pixel-corners w-full max-w-[600px] rounded-full border border-[#2a1400] bg-[#ffe7b0] px-6 py-3 text-lg uppercase tracking-[0.16em] text-[#2a1400] sm:text-2xl"
+                            onClick={() => onNavigate("/hock-lee-bus-riots-pixel/choose-your-character")}
+                        >
+                            Choose Another Character
+                        </button>
+                        <button
+                            type="button"
+                            className="artifact-button pixel-corners w-full max-w-[600px] rounded-full border border-[#2a1400] bg-[#2a1400] px-6 py-3 text-lg uppercase tracking-[0.16em] text-[#fff4dc] sm:text-2xl"
+                            onClick={() => onNavigate("/")}
+                        >
+                            Leave Game
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

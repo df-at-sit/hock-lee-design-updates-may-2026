@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { GameMenuOverlay } from "./game-menu-overlay";
 import {
   buildRoleAwareRoute,
   CHARACTER_PRESENTATIONS,
@@ -9,10 +10,8 @@ import {
   getNextRouteForCutscene,
   type StoryCutsceneKind,
 } from "./story-data";
-import {
-  getStoredCharacterCode,
-  persistCharacterCode,
-} from "./scene-config";
+import type { CharacterCode } from "./scenes";
+import { useSelectedCharacterCode } from "./use-selected-character-code";
 
 type RoleCutscenePageProps = {
   kind: StoryCutsceneKind;
@@ -20,11 +19,7 @@ type RoleCutscenePageProps = {
 
 export function RoleCutscenePage({ kind }: RoleCutscenePageProps) {
   const searchParams = useSearchParams();
-  const selectedCharacter = getStoredCharacterCode(searchParams.get("role"));
-
-  useEffect(() => {
-    persistCharacterCode(selectedCharacter);
-  }, [selectedCharacter]);
+  const selectedCharacter = useSelectedCharacterCode(searchParams.get("role"));
 
   return (
     <RoleCutsceneShell
@@ -37,7 +32,7 @@ export function RoleCutscenePage({ kind }: RoleCutscenePageProps) {
 
 type RoleCutsceneShellProps = {
   kind: StoryCutsceneKind;
-  selectedCharacter: ReturnType<typeof getStoredCharacterCode>;
+  selectedCharacter: CharacterCode;
 };
 
 function RoleCutsceneShell({
@@ -49,9 +44,11 @@ function RoleCutsceneShell({
   const [visibleWordCount, setVisibleWordCount] = useState(0);
   const [prevParagraph, setPrevParagraph] = useState<string | null>(null);
   const [isPrevVisible, setIsPrevVisible] = useState(false);
-  const [playerInput, setPlayerInput] = useState("");
   const [isContinueHighlighted, setIsContinueHighlighted] = useState(false);
   const [isContinueHovered, setIsContinueHovered] = useState(false);
+  const [isSkipHovered, setIsSkipHovered] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
   const startTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const nextTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wordIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -145,15 +142,33 @@ function RoleCutsceneShell({
     getNextRouteForCutscene(selectedCharacter, kind),
     selectedCharacter
   );
+  const isMerlionDone =
+    paragraphs.length > 0 &&
+    activeIndex === paragraphs.length - 1 &&
+    visibleWordCount >= paragraphs[paragraphs.length - 1].split(" ").length;
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.target instanceof HTMLInputElement) {
+      if (event.key === "Escape") {
+        if (isHelpOpen) {
+          event.preventDefault();
+          setIsHelpOpen(false);
+          return;
+        }
+        if (isMenuOpen) {
+          event.preventDefault();
+          setIsMenuOpen(false);
+          return;
+        }
+      }
+      if (isMenuOpen || isHelpOpen) {
         return;
       }
       if (event.key === "ArrowDown") {
         event.preventDefault();
-        setIsContinueHighlighted(true);
+        if (isMerlionDone) {
+          setIsContinueHighlighted(true);
+        }
         return;
       }
       if (event.key === "ArrowUp") {
@@ -161,7 +176,7 @@ function RoleCutsceneShell({
         setIsContinueHighlighted(false);
         return;
       }
-      if (event.key === "Enter" && isContinueHighlighted) {
+      if (event.key === "Enter" && isContinueHighlighted && isMerlionDone) {
         event.preventDefault();
         router.push(continueRoute);
       }
@@ -169,37 +184,69 @@ function RoleCutsceneShell({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [continueRoute, isContinueHighlighted, router]);
+  }, [
+    continueRoute,
+    isContinueHighlighted,
+    isHelpOpen,
+    isMenuOpen,
+    isMerlionDone,
+    router,
+  ]);
 
   const currentWords =
     activeIndex >= 0 && activeIndex < paragraphs.length
       ? paragraphs[activeIndex].split(" ").slice(0, visibleWordCount).join(" ")
       : "";
   const playerPresentation = CHARACTER_PRESENTATIONS[selectedCharacter];
+  const continueHighlighted = isMerlionDone && isContinueHighlighted;
+  const continueHovered = isMerlionDone && isContinueHovered;
+  const navigateToNextScene = () => {
+    router.push(continueRoute);
+  };
+  const handleMenuNavigation = (route: string) => {
+    setIsMenuOpen(false);
+    setIsHelpOpen(false);
+    router.push(route);
+  };
 
   return (
-    <main className="relative min-h-screen w-full overflow-hidden bg-black">
+    <main className="relative min-h-screen h-dvh w-full overflow-hidden bg-black">
       <div
         className="scene-bg absolute inset-0 bg-cover bg-center bg-no-repeat"
         style={{ backgroundImage: "url('/background/hockleescenes/cutscene.png')" }}
       />
 
-      <div
-        className="absolute left-6 top-6 z-10 max-w-[340px]"
-        style={{
-          fontFamily: "\"PPNeueBit Bold\", \"PPNeueBit\", monospace",
-        }}
-      >
-        <div className="rounded-full border-2 border-[#911010] bg-[rgba(29,5,5,0.88)] px-4 py-2 text-xl uppercase tracking-[0.24em] text-[#ff5b52]">
-          {cutscene.badge}
+      <div className="absolute bottom-10 left-10 z-20 flex gap-3">
+        <div className="ui-button-shell pixel-corners--wrapper">
+          <button
+            type="button"
+            className="ui-button pixel-corners"
+            aria-label="Menu"
+            onClick={() => {
+              setIsHelpOpen(false);
+              setIsMenuOpen(true);
+            }}
+          >
+            <span className="ui-button-icon">≡</span>
+          </button>
         </div>
-        <div className="mt-3 pixel-corners bg-[rgba(244,209,166,0.92)] px-4 py-3 text-2xl leading-tight text-[#1a0f0a]">
-          {cutscene.heading}
+        <div className="ui-button-shell pixel-corners--wrapper">
+          <button
+            type="button"
+            className="ui-button pixel-corners"
+            aria-label="Help"
+            onClick={() => {
+              setIsMenuOpen(false);
+              setIsHelpOpen(true);
+            }}
+          >
+            <span className="ui-button-icon">?</span>
+          </button>
         </div>
       </div>
 
       <section
-        className="absolute left-1/2 top-1/2 z-10 flex w-[40%] -translate-x-1/2 -translate-y-1/2 flex-col gap-6 pb-20"
+        className="absolute left-1/2 top-1/2 z-10 flex w-[min(42rem,calc(100vw-5rem))] -translate-x-1/2 -translate-y-1/2 flex-col gap-6"
         style={{
           fontFamily: "\"PPNeueBit Bold\", \"PPNeueBit\", monospace",
         }}
@@ -226,16 +273,11 @@ function RoleCutsceneShell({
               </div>
             </div>
             <div
-              className="pixel-corners"
+              className="pixel-corners hl-cutscene-dialogue-bubble"
               style={{
                 backgroundColor: "#f4d1a6",
                 color: "#1a0f0a",
-                padding: "14px 16px",
-                fontSize: "22px",
                 letterSpacing: "0.4px",
-                maxWidth: "85%",
-                height: "240px",
-                overflowY: "auto",
                 border: "3px solid #8bd3ff",
               }}
               ref={merlionBubbleRef}
@@ -270,37 +312,71 @@ function RoleCutsceneShell({
               </div>
             </div>
           </div>
-          <div className="flex items-start justify-end gap-4">
-            <div
-              className="pixel-corners"
+          <div className="flex justify-start pl-[88px]">
+            <button
+              type="button"
+              className="artifact-label pixel-corners border px-3 py-2 uppercase tracking-[0.18em]"
+              onClick={navigateToNextScene}
+              onMouseEnter={() => setIsSkipHovered(true)}
+              onMouseLeave={() => setIsSkipHovered(false)}
               style={{
-                backgroundColor: "#ffb700",
-                color: "#5c4638",
-                padding: "10px 12px",
-                fontSize: "20px",
-                letterSpacing: "0.3px",
-                maxWidth: "70%",
-                border: "8px solid #ff0000",
+                width: "fit-content",
+                minWidth: "120px",
+                backgroundColor: isSkipHovered ? "#ffb700" : "#f24747",
+                color: isSkipHovered ? "#1a1513" : "#fff4d9",
+                borderColor: isSkipHovered ? "#7a1c1c" : "#7a1c1c",
+                fontFamily: "\"PPNeueBit Bold\", \"PPNeueBit\", monospace",
+                fontSize: "18px",
+                fontWeight: 700,
+                lineHeight: 1,
+                textShadow: "none",
               }}
             >
-              <label className="sr-only" htmlFor="player-input">
-                Ask your questions
-              </label>
-              <input
-                id="player-input"
-                type="text"
-                value={playerInput}
-                onChange={(event) => setPlayerInput(event.target.value)}
-                placeholder="Ask your questions!"
-                className="w-full bg-transparent outline-none"
-                style={{
-                  color: "inherit",
-                  fontFamily: "inherit",
-                  fontSize: "20px",
-                  letterSpacing: "0.3px",
-                  caretColor: "#5c4638",
+              Skip
+            </button>
+          </div>
+          <div className="flex items-start justify-end gap-4">
+            <div className="flex flex-1 flex-col items-end">
+              <button
+                type="button"
+                className="artifact-label artifact-button pixel-corners flex w-full items-center justify-center gap-2 border px-4 py-3 uppercase tracking-[0.2em]"
+                disabled={!isMerlionDone}
+                aria-disabled={!isMerlionDone}
+                onClick={() => {
+                  if (!isMerlionDone) return;
+                  navigateToNextScene();
                 }}
-              />
+                onMouseEnter={() => {
+                  if (isMerlionDone) {
+                    setIsContinueHovered(true);
+                  }
+                }}
+                onMouseLeave={() => setIsContinueHovered(false)}
+                style={{
+                  backgroundColor: !isMerlionDone
+                    ? "#b3aca2"
+                    : continueHighlighted
+                    ? "#f24747"
+                    : continueHovered
+                      ? "#ffb700"
+                      : "#fff4d9",
+                  color: !isMerlionDone ? "#6a6258" : "#1a1513",
+                  fontFamily: "\"PPNeueBit Bold\", \"PPNeueBit\", monospace",
+                  fontSize: "24px",
+                  lineHeight: 1,
+                  minHeight: "72px",
+                  maxWidth: "70%",
+                  borderColor: !isMerlionDone
+                    ? "#8d867d"
+                    : continueHighlighted || continueHovered
+                      ? "#7a1c1c"
+                      : "#d9b58f",
+                  cursor: isMerlionDone ? "pointer" : "not-allowed",
+                  opacity: isMerlionDone ? 1 : 0.8,
+                }}
+              >
+                {cutscene.continueLabel} <span className="text-base leading-none">↵</span>
+              </button>
             </div>
             <div className="flex flex-col items-center gap-2">
               <img
@@ -332,24 +408,46 @@ function RoleCutsceneShell({
         </div>
       </section>
 
-      <div className="absolute bottom-6 left-1/2 z-10 -translate-x-1/2">
-        <button
-          type="button"
-          className="artifact-label artifact-button pixel-corners flex items-center justify-center gap-2 rounded-full border px-4 py-2 uppercase tracking-[0.2em]"
-          onClick={() => router.push(continueRoute)}
-          onMouseEnter={() => setIsContinueHovered(true)}
-          onMouseLeave={() => setIsContinueHovered(false)}
-          style={{
-            backgroundColor: isContinueHighlighted ? "#f24747" : "#fff4d9",
-            color: "#1a1513",
-            fontFamily: "\"PPNeueBit Bold\", \"PPNeueBit\", monospace",
-            borderColor:
-              isContinueHighlighted || isContinueHovered ? "#7a1c1c" : "#d9b58f",
-          }}
+      <GameMenuOverlay
+        isOpen={isMenuOpen}
+        onClose={() => setIsMenuOpen(false)}
+        onNavigate={handleMenuNavigation}
+      />
+
+      {isHelpOpen ? (
+        <div
+          className="absolute inset-0 flex items-center justify-center bg-black/75 p-6"
+          style={{ zIndex: 120 }}
         >
-          {cutscene.continueLabel} <span className="text-base leading-none">↵</span>
-        </button>
-      </div>
+          <div
+            className="scene-intro-guide-panel pixel-corners w-full max-w-2xl border border-[#9d4a1d] bg-[#ed7c42] p-6 text-[#2a1400]"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="cutscene-help-title"
+          >
+            <div id="cutscene-help-title" className="artifact-label text-4xl sm:text-6xl">
+              Cutscene Guide
+            </div>
+            <p className="mt-3 text-2xl leading-relaxed sm:text-3xl">
+              Merlion introduces each phase, explains the historical stakes, and frames your role before the story continues.
+            </p>
+            <ul className="mt-4 list-disc space-y-2 pl-5 text-xl sm:text-3xl">
+              <li>Read the dialogue box to understand the historical context for this phase and character.</li>
+              <li>Use the button beside your character to move on when you are ready.</li>
+              <li>Open the menu if you want to restart, switch characters, or leave the game.</li>
+            </ul>
+            <div className="mt-6 flex justify-end">
+              <button
+                type="button"
+                className="artifact-button pixel-corners rounded-full border border-[#2a1400] bg-[#ffe7b0] px-5 py-2 text-lg uppercase tracking-[0.16em] text-[#2a1400] sm:text-2xl"
+                onClick={() => setIsHelpOpen(false)}
+              >
+                Okay
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }

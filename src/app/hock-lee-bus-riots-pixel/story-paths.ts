@@ -1,12 +1,20 @@
 export const HOCK_LEE_MAP_ROUTE = "/hock-lee-bus-riots-pixel/map";
 
 export const INTRO_CUTSCENE_ROUTE = "/hock-lee-bus-riots-pixel/cutscenes/intro";
+export const STUDENT_SUPPORT_CUTSCENE_ROUTE =
+  "/hock-lee-bus-riots-pixel/cutscenes/student-support";
+export const STUDENT_ESCALATION_CUTSCENE_ROUTE =
+  "/hock-lee-bus-riots-pixel/cutscenes/student-escalation";
 export const RIOT_CUTSCENE_ROUTE =
   "/hock-lee-bus-riots-pixel/cutscenes/riot-cutscene";
 export const POST_RIOT_CUTSCENE_ROUTE =
   "/hock-lee-bus-riots-pixel/cutscenes/post-riot-cutscene";
+export const NEGOTIATION_OUTCOME_CUTSCENE_ROUTE =
+  "/hock-lee-bus-riots-pixel/cutscenes/negotiation-outcome";
 export const OUTRO_CUTSCENE_ROUTE =
   "/hock-lee-bus-riots-pixel/cutscenes/outro-cutscene";
+export const WHAT_REALLY_HAPPENED_ROUTE =
+  "/hock-lee-bus-riots-pixel/what-really-happened";
 
 export const CITY_HALL_ROUTE = "/hock-lee-bus-riots-pixel/pre-riot/city-hall";
 export const MARKET_ROUTE = "/hock-lee-bus-riots-pixel/pre-riot/market";
