@@ -15,15 +15,30 @@ import {
     parseVisitedProgress,
 } from "./map-progression";
 import type { CharacterCode } from "./scenes";
-import { DispositionRadarPanel } from "./disposition-radar-panel";
 import {
     buildArtifactInteractionKey,
     buildNpcInteractionKey,
     registerDispositionInteraction,
 } from "./disposition-state";
 import { GameMenuOverlay } from "./game-menu-overlay";
+import {
+    MERLION_CITY_HALL_TUTORIAL_MESSAGE,
+    MERLION_IDLE_HELP_MESSAGE,
+    getMerlionArtifactNudgeMessage,
+    getMerlionNpcNudgeMessage,
+    getMerlionSceneDefaultMessage,
+    getMerlionSideQuestNpcNudgeMessage,
+} from "./merlion-checkpoints";
 import { SceneCameraButton, SceneTitleWithCamera } from "./scene-title-with-camera";
 import { getStoryStepByRoute } from "./story-data";
+import {
+    GLOBAL_SIDE_QUESTS,
+    STUDENT_HUNGRY_BUS_WORKERS_SIDE_QUEST_ID,
+    acceptSideQuest,
+    completeSideQuestAction,
+    useAcceptedSideQuestIds,
+    useCompletedSideQuestActions,
+} from "./sidequest-state";
 
 type Direction =
     | "north"
@@ -56,7 +71,6 @@ const NPC_CHAT_OPEN_DISTANCE = 200;
 const NPC_CHAT_AUTOPLAY_MS = 5000;
 const NPC_MIN_Z_INDEX = 2;
 const NPC_MAX_Z_INDEX = CHARACTER_SPRITE_Z_INDEX - 1;
-const ROOTS_COLLECTION_URL = "https://www.roots.gov.sg/Collection-Landing";
 const DIALOGUE_BUBBLE_WIDTH = "var(--hl-dialogue-bubble-width)";
 const CHARACTER_ENTRY_CHAT_DEFAULT_DELAY_MS = 2100;
 const CHARACTER_ENTRY_CHAT_DEFAULT_DURATION_MS = 3200;
@@ -65,29 +79,63 @@ const DEFAULT_CHARACTER_INITIAL_Y_RATIO = 0.66;
 const LEGACY_CHARACTER_INITIAL_Y_RATIO = 0.55;
 const MIN_DERIVED_CHARACTER_INITIAL_Y_RATIO = DEFAULT_CHARACTER_INITIAL_Y_RATIO;
 const MAX_DERIVED_CHARACTER_INITIAL_Y_RATIO = 0.74;
-const SCENE_TITLE_PHASE_PREFIX = /^(?:Pre-Riot|Riot|Post-Riot):\s*/;
 
 type Point = { x: number; y: number };
 
-const getArtifactSourceLabel = (artifact: SceneArtifact | undefined) => {
-    const sourceUrl = artifact?.rootsUrl;
-    if (!sourceUrl) return "Open on roots.sg";
-
-    try {
-        const hostname = new URL(sourceUrl).hostname.toLowerCase();
-
-        if (hostname.includes("roots.gov.sg")) {
-            return "Open on roots.sg";
-        }
-
-        if (hostname.includes("nas.gov.sg")) {
-            return "Open on National Archives";
-        }
-
-        return `Open on ${hostname.replace(/^www\./, "")}`;
-    } catch {
-        return "Open Source Record";
-    }
+const ArtifactDrawerFrame = () => {
+    return (
+        <svg
+            className="artifact-drawer-frame"
+            width="1205"
+            height="800"
+            viewBox="0 0 1205 800"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            preserveAspectRatio="none"
+            aria-hidden="true"
+        >
+            <g filter="url(#artifact-book-filter-left)">
+                <path d="M16.0228 28.5059H605V800H542.707V791.86H18.6071V783.72H9.82042V775.58H0V41.6204H16.0228V28.5059Z" fill="#603204" />
+            </g>
+            <path d="M602.5 31.0059V797.5H545.207V789.36H21.1074V781.22H12.3203V773.08H2.5V44.1201H18.5225V31.0059H602.5Z" stroke="#111110" strokeWidth="5" />
+            <path d="M501.93 22.7295L504.91 32.4492L505.452 34.2168H523.361V44.3252H546.496V51.2178H555.96V60.4082H599.601V774.511H594.085V769.916H574.889V774.511H489.979V769.916H27.5469V766.5H24.1309V44.3252H36.75V22.7295H501.93Z" fill="#8F887B" stroke="#111110" strokeWidth="5" />
+            <path d="M525.025 12.3848L528.008 22.1182L528.55 23.8857H546.474V34.0068H569.627V40.9072H579.098V50.1084H598.567V771.98H580.677V775.201H576.205V771.98H556.21V768.761H536.214V765.08H513.062V760.479H50.2695V757H46.8535V34.0068H59.4824V12.3848H525.025Z" fill="#BEB6A4" stroke="#111110" strokeWidth="5" />
+            <path d="M540.089 2.5L540.374 11.5723L540.45 13.9941H558.603V24.1094H581.327V31.0059H590.623V40.2012H602.5V774.512H593.556V764.856H576.514V758.879H564.12V754.741H525.904V750.144H72.4771V746.5H68.3452V24.1094H80.7397V2.5H540.089Z" fill="#EEE3CD" stroke="#111110" strokeWidth="5" />
+            <path d="M579.179 47.3688H558.011M558.011 37.7074H538.471M538.471 27.5859H122.71V47.3688H109.141V55.65H89.6016V696.522H108.598V708.023H123.796V725.046H534.129M534.129 734.247H566.153M566.153 742.988H576.465M97.2003 715.844H105.342M104.799 37.7074H93.9437" stroke="#BEB6A4" strokeWidth="8" />
+            <path d="M592.864 42.5L593.381 762.5H595.963V772H600.094V42.5H592.864Z" fill="#5F5B52" />
+            <path d="M579.179 33.1719L588.474 33.1719V42.7031H593.639V762.333H579.179L579.179 33.1719Z" fill="#BEB6A4" />
+            <g filter="url(#artifact-book-filter-right)">
+                <path d="M1188.98 28.5059H600V800H662.293V791.86H1186.39V783.72H1195.18V775.58H1205V41.6204H1188.98V28.5059Z" fill="#603204" />
+            </g>
+            <path d="M602.5 31.0059V797.5H659.793V789.36H1183.89V781.22H1192.68V773.08H1202.5V44.1201H1186.48V31.0059H602.5Z" stroke="#111110" strokeWidth="5" />
+            <path d="M703.07 22.7295L700.09 32.4492L699.548 34.2168H681.639V44.3252H658.504V51.2178H649.04V60.4082H605.399V774.511H610.915V769.916H630.111V774.511H715.021V769.916H1177.45V766.5H1180.87V44.3252H1168.25V22.7295H703.07Z" fill="#8F887B" stroke="#111110" strokeWidth="5" />
+            <path d="M679.975 12.3848L676.992 22.1182L676.45 23.8857H658.526V34.0068H635.373V40.9072H625.902V50.1084H606.433V771.98H624.323V775.201H628.795V771.98H648.79V768.761H668.786V765.08H691.938V760.479H1154.73V757H1158.15V34.0068H1145.52V12.3848H679.975Z" fill="#BEB6A4" stroke="#111110" strokeWidth="5" />
+            <path d="M664.911 2.5L664.626 11.5723L664.55 13.9941H646.397V24.1094H623.673V31.0059H614.377V40.2012H602.5V774.512H611.444V764.856H628.486V758.879H640.88V754.741H679.096V750.144H1132.52V746.5H1136.65V24.1094H1124.26V2.5H664.911Z" fill="#EEE3CD" stroke="#111110" strokeWidth="5" />
+            <path d="M625.821 47.3688H646.989M646.989 37.7074H666.529M666.529 27.5859H1082.29V47.3688H1095.86V55.65H1115.4V696.522H1096.4V708.023H1081.2V725.046H670.871M670.871 734.247H638.847M638.847 742.988H628.535M1107.8 715.844H1099.66M1100.2 37.7074H1111.06" stroke="#BEB6A4" strokeWidth="8" />
+            <path d="M612.136 42.5L611.619 762.5H609.037V772H604.906V42.5H612.136Z" fill="#5F5B52" />
+            <path d="M625.821 33.1719L616.526 33.1719V42.7031H611.361V762.333H625.821L625.821 33.1719Z" fill="#BEB6A4" />
+            <defs>
+                <filter id="artifact-book-filter-left" x="0" y="28.5059" width="605" height="771.494" filterUnits="userSpaceOnUse" colorInterpolationFilters="sRGB">
+                    <feFlood floodOpacity="0" result="BackgroundImageFix" />
+                    <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape" />
+                    <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha" />
+                    <feOffset dx="10" dy="-10" />
+                    <feComposite in2="hardAlpha" operator="arithmetic" k2="-1" k3="1" />
+                    <feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.5 0" />
+                    <feBlend mode="normal" in2="shape" result="effect1_innerShadow_1223_6438" />
+                </filter>
+                <filter id="artifact-book-filter-right" x="600" y="28.5059" width="605" height="771.494" filterUnits="userSpaceOnUse" colorInterpolationFilters="sRGB">
+                    <feFlood floodOpacity="0" result="BackgroundImageFix" />
+                    <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape" />
+                    <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha" />
+                    <feOffset dx="10" dy="-10" />
+                    <feComposite in2="hardAlpha" operator="arithmetic" k2="-1" k3="1" />
+                    <feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.5 0" />
+                    <feBlend mode="normal" in2="shape" result="effect1_innerShadow_1223_6438" />
+                </filter>
+            </defs>
+        </svg>
+    );
 };
 
 const clamp = (value: number, min: number, max: number) =>
@@ -99,6 +147,39 @@ const disposeAudioElement = (audio: HTMLAudioElement | null) => {
     if (!audio) return;
     audio.pause();
     audio.src = "";
+};
+
+const FRONT_FACING_NPC_IMAGE_OVERRIDES: Record<string, string> = {
+    "/npcfigures/leekuanyew/LeeKwanYew_East.webp":
+        "/npcfigures/leekuanyew/LeeKuanYew_South.webp",
+    "/npcfigures/leekuanyew/LeeKwanYew_West.webp":
+        "/npcfigures/leekuanyew/LeeKuanYew_South.webp",
+    "/npcfigures/busdepotworker3/Bus Worker 02_0002.webp":
+        "/npcfigures/busdepotworker3/Bus Worker 02_0001.webp",
+    "/npcfigures/busdepotworker3/Bus Worker 02_0003.webp":
+        "/npcfigures/busdepotworker3/Bus Worker 02_0001.webp",
+    "/npcfigures/busdepotworker3/Bus Worker 02_0004.webp":
+        "/npcfigures/busdepotworker3/Bus Worker 02_0001.webp",
+};
+
+const NPC_DIRECTION_FILENAME_PATTERN =
+    /_(?:north(?: east| west)?|south(?: east| west)?|east(?: south)?|west|wests)(?=\.[^/.]+$)/i;
+const NPC_LOWERCASE_DIRECTION_FILENAME_PATTERN =
+    /\/(?:north|south|east|west)(?=\.[^/.]+$)/i;
+
+const resolveFrontFacingNpcImage = (imageSrc: string) => {
+    const override = FRONT_FACING_NPC_IMAGE_OVERRIDES[imageSrc];
+    if (override) return override;
+
+    if (NPC_DIRECTION_FILENAME_PATTERN.test(imageSrc)) {
+        return imageSrc.replace(NPC_DIRECTION_FILENAME_PATTERN, "_South");
+    }
+
+    if (NPC_LOWERCASE_DIRECTION_FILENAME_PATTERN.test(imageSrc)) {
+        return imageSrc.replace(NPC_LOWERCASE_DIRECTION_FILENAME_PATTERN, "/south");
+    }
+
+    return imageSrc;
 };
 
 const extractFirstNumber = (value: string) => {
@@ -124,9 +205,6 @@ const parseCssYValue = (value: string): number | null => {
 
     return extractFirstNumber(normalized);
 };
-
-const stripSceneTitlePhasePrefix = (title: string) =>
-    title.replace(SCENE_TITLE_PHASE_PREFIX, "");
 
 const parseCssViewportRatio = (value: string): number | null => {
     const normalized = value.trim().toLowerCase();
@@ -276,6 +354,12 @@ type SceneArtifactChat = {
     master2: string;
 };
 
+type ArtifactDrawerChatMessage = {
+    id: string;
+    sender: "user";
+    text: string;
+};
+
 export type SceneAudioCue = {
     src: string;
     volume?: number;
@@ -287,6 +371,47 @@ type SceneNpcDialogueChoice = {
     label: string;
     playerText?: string;
     npcReply: string;
+};
+
+type SceneNpcChatBubbleAction = {
+    label: string;
+    sideQuestId: string;
+    actionId?: string;
+    requiredCompletedActionIds?: string[];
+    hideWhenAccepted?: boolean;
+    availableText?: string;
+    completedText?: string;
+    openQuestAfterComplete?: boolean;
+};
+
+type SceneSideQuestActionTrigger = {
+    sideQuestId: string;
+    actionId: string;
+    requiredCompletedActionIds?: string[];
+};
+
+export type SceneSideQuest = {
+    id: string;
+    title: string;
+    typeLabel: string;
+    iconSrc?: string;
+    iconAlt?: string;
+    description: string;
+    previewImage?: string;
+    previewAlt?: string;
+    previewNpcImage?: string;
+    previewNpcAlt?: string;
+    previewCardTitle?: string;
+    previewCardImage?: string;
+    previewCardImageAlt?: string;
+    actions: {
+        id: string;
+        label: string;
+        iconSrc?: string;
+        iconAlt?: string;
+    }[];
+    laterLabel?: string;
+    acceptLabel?: string;
 };
 
 export type SceneArtifact = {
@@ -304,6 +429,7 @@ export type SceneArtifact = {
     chat: SceneArtifactChat;
     rootsUrl?: string;
     interactionSound?: SceneAudioCue;
+    sideQuestActionOnOpen?: SceneSideQuestActionTrigger;
 };
 
 export type SceneNpcFigure = {
@@ -315,6 +441,8 @@ export type SceneNpcFigure = {
     chatBubbleSpeaker?: string;
     chatBubbleText?: string;
     chatBubbleTexts?: string[];
+    chatBubbleAction?: SceneNpcChatBubbleAction;
+    chatBubbleActions?: SceneNpcChatBubbleAction[];
     dialogueChoices?: SceneNpcDialogueChoice[];
     npcType?: "interactive" | "non-interactive" | "artifact";
     isInteractive?: boolean;
@@ -449,6 +577,7 @@ export type BaseSceneConfig = {
     rootClassName?: string;
     characterName?: string;
     characterAlt?: string;
+    characterDialoguePortraitSprite?: string;
     characterSpriteBasePath?: string;
     characterSprites?: CharacterSpriteSet;
     selectedCharacterCode?: CharacterCode;
@@ -473,6 +602,7 @@ export type BaseSceneConfig = {
     characterMaxXRatio?: number;
     characterEntryChat?: SceneCharacterEntryChat;
     introGuide?: SceneIntroGuide;
+    sideQuests?: SceneSideQuest[];
     onboarding?: SceneOnboarding;
     npcTransitions?: {
         triggerNpcId: string;
@@ -603,6 +733,106 @@ const SceneOnboardingBubble = ({
     );
 };
 
+type ExtendedDialogueOverlayProps = {
+    npcFigure: SceneNpcFigure;
+    npcImageSrc: string;
+    npcSpeakerName: string;
+    playerName: string;
+    playerImageSrc: string;
+    playerImageFallbackSrcs?: string[];
+    playerAlt: string;
+    speaker: "npc" | "player";
+    text: string;
+    choices?: SceneNpcDialogueChoice[];
+    onAdvance: () => void;
+    onChoiceSelect: (choice: SceneNpcDialogueChoice) => void;
+};
+
+const ExtendedDialogueOverlay = ({
+    npcFigure,
+    npcImageSrc,
+    npcSpeakerName,
+    playerName,
+    playerImageSrc,
+    playerImageFallbackSrcs = [],
+    playerAlt,
+    speaker,
+    text,
+    choices = [],
+    onAdvance,
+    onChoiceSelect,
+}: ExtendedDialogueOverlayProps) => {
+    const hasChoices = choices.length > 0;
+    const speakerName = speaker === "player" ? playerName : npcSpeakerName;
+
+    return (
+        <div
+            className={`extended-dialogue-overlay extended-dialogue-overlay--${speaker}`}
+            data-ui="true"
+            role="dialog"
+            aria-label={`${speakerName} dialogue`}
+            onClick={(event) => {
+                event.stopPropagation();
+                if (hasChoices) return;
+                onAdvance();
+            }}
+        >
+            <div className="extended-dialogue-scrim" />
+            <img
+                src={npcImageSrc}
+                alt={npcFigure.alt}
+                className="extended-dialogue-portrait extended-dialogue-portrait--npc"
+                draggable={false}
+            />
+            <img
+                src={playerImageSrc}
+                alt={playerAlt}
+                className="extended-dialogue-portrait extended-dialogue-portrait--player"
+                draggable={false}
+                onError={(event) => {
+                    const image = event.currentTarget;
+                    const fallbackIndex = Number(image.dataset.fallbackIndex ?? "0");
+                    const nextSrc = playerImageFallbackSrcs[fallbackIndex];
+                    if (!nextSrc) return;
+                    image.dataset.fallbackIndex = String(fallbackIndex + 1);
+                    image.src = nextSrc;
+                }}
+            />
+            <div className={`extended-dialogue-panel extended-dialogue-panel--${speaker}`}>
+                <div className="double-one-step-multicolor extended-dialogue-nameplate-frame">
+                    <div className="extended-dialogue-nameplate one-step-border__content">{speakerName}</div>
+                </div>
+                <div className="double-one-step extended-dialogue-box-frame">
+                    <div className="extended-dialogue-box one-step-border__content">
+                        {hasChoices ? (
+                            <div className="extended-dialogue-choices">
+                                {choices.map((choice) => (
+                                    <button
+                                        key={choice.id}
+                                        type="button"
+                                        className="extended-dialogue-choice"
+                                        onClick={(event) => {
+                                            event.stopPropagation();
+                                            onChoiceSelect(choice);
+                                        }}
+                                    >
+                                        {choice.label}
+                                    </button>
+                                ))}
+                            </div>
+                        ) : (
+                            <>
+                                <span className="extended-dialogue-text">{text}</span>
+                                <span className="extended-dialogue-advance" aria-hidden="true" />
+                            </>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 export function BaseSceneShell({ config }: BaseSceneShellProps) {
     const initialNpcFigures = config.npcFigures ?? [];
     const initialAutoOpenNpcId = getAutoOpenNpcId(initialNpcFigures);
@@ -637,8 +867,11 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
     const [inventorySlots, setInventorySlots] = useState<(string | null)[]>(
         Array.from({ length: 6 }, () => null)
     );
-    const [drawerFocus, setDrawerFocus] = useState<"roots" | "close">("roots");
+    const [drawerFocus, setDrawerFocus] = useState<"close">("close");
     const [activeNpcId, setActiveNpcId] = useState<string | null>(null);
+    const [activeSideQuestId, setActiveSideQuestId] = useState<string | null>(null);
+    const acceptedSideQuestIds = useAcceptedSideQuestIds();
+    const completedSideQuestActions = useCompletedSideQuestActions();
     const [sceneNpcFigures, setSceneNpcFigures] = useState<SceneNpcFigure[]>(initialNpcFigures);
     const [visibleCharacterEntryChatKey, setVisibleCharacterEntryChatKey] = useState<
         string | null
@@ -652,6 +885,12 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
     const [showOnboardingCompletionNotice, setShowOnboardingCompletionNotice] =
         useState(false);
     const [npcChatCycleIndex, setNpcChatCycleIndex] = useState<Record<string, number>>({});
+    const [artifactChatInputsById, setArtifactChatInputsById] = useState<Record<string, string>>(
+        {}
+    );
+    const [artifactChatMessagesById, setArtifactChatMessagesById] = useState<
+        Record<string, ArtifactDrawerChatMessage[]>
+    >({});
     const [npcDialogueSelectionById, setNpcDialogueSelectionById] = useState<
         Record<string, string | null>
     >({});
@@ -672,6 +911,14 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
     );
     const [isRouteLoading, setIsRouteLoading] = useState(false);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [isMerlionChatOpen, setIsMerlionChatOpen] = useState(false);
+    const [merlionCheckpointMessage, setMerlionCheckpointMessage] = useState<string | null>(
+        null
+    );
+    const [idleMerlionMessage, setIdleMerlionMessage] = useState<string | null>(null);
+    const [hasInteractedWithSceneArtifact, setHasInteractedWithSceneArtifact] =
+        useState(false);
+    const [hasInteractedWithSceneNpc, setHasInteractedWithSceneNpc] = useState(false);
     const isRouteLoadingRef = useRef(false);
     const pendingNpcInteractionRef = useRef<{
         id: string;
@@ -692,12 +939,14 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
         Boolean(config.introGuide) || Boolean(config.onboarding?.callouts.length)
     );
     const isMenuOpenRef = useRef(false);
-    const drawerFocusRef = useRef<"roots" | "close">("roots");
+    const drawerFocusRef = useRef<"close">("close");
+    const artifactChatScrollRef = useRef<HTMLDivElement | null>(null);
     const npcDialogueReplyTimeoutByIdRef = useRef<Record<string, number>>({});
     const ambientAudioRef = useRef<HTMLAudioElement | null>(null);
     const interactionAudioRef = useRef<HTMLAudioElement | null>(null);
     const pendingAmbientPlaybackRef = useRef(false);
     const pendingInteractionPlaybackRef = useRef(false);
+    const shownMapExitNudgesRef = useRef<Set<string>>(new Set());
     const editModeRef = useRef(false);
     const polygonPointsRef = useRef<Point[]>([]);
     const isPolygonClosedRef = useRef(false);
@@ -714,7 +963,6 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
     const pathname = usePathname();
 
     const sceneTitle = config.sceneTitle;
-    const displaySceneTitle = stripSceneTitlePhasePrefix(sceneTitle);
     const sceneSubtitle = config.sceneSubtitle;
     const sceneBackgroundImage = config.sceneBackgroundImage;
     const ambientSound = config.ambientSound;
@@ -764,13 +1012,13 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
     const rootClassName = config.rootClassName ?? "scene2-storehall-page";
     const characterName = config.characterName ?? "Rajiv";
     const characterAlt = config.characterAlt ?? "Rajiv Menon";
+    const characterDialoguePortraitSprite = config.characterDialoguePortraitSprite;
     const characterSpriteBasePath =
         config.characterSpriteBasePath ?? "/character-figures/rajivmenon";
     const characterSprites = config.characterSprites;
     const selectedCharacterCode = config.selectedCharacterCode ?? "BW";
     const mapRoute = config.mapRoute ?? "/hock-lee-bus-riots-pixel/map";
     const mapLabel = config.mapLabel ?? "MAP";
-    const mapEmoji = config.mapEmoji ?? "🗺️";
     const showCompanionAvatar = config.showCompanionAvatar ?? false;
     const companionAvatarSrc =
         config.companionAvatarSrc ?? "/character-profile-pics/merlion.png";
@@ -807,8 +1055,39 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
     const onboardingCallouts = sceneOnboarding?.callouts ?? [];
     const currentOnboardingCallout =
         activeOnboardingStepIndex >= 0 ? onboardingCallouts[activeOnboardingStepIndex] ?? null : null;
+    const currentStoryStep = useMemo(
+        () => getStoryStepByRoute(selectedCharacterCode, pathname),
+        [pathname, selectedCharacterCode]
+    );
+    const sceneLocationLabel = currentStoryStep?.locationLabel ?? sceneTitle;
+    const sceneNodeKey = currentStoryStep?.nodeKey ?? null;
+    const hasSceneArtifactInteractions = useMemo(
+        () =>
+            sceneArtifacts.length > 0 &&
+            (
+                showArtifacts ||
+                npcFigures.some((npcFigure) => {
+                    const chatBubbleLines = getNpcChatBubbleLines(npcFigure);
+                    return getNpcType(npcFigure, chatBubbleLines.length > 0) === "artifact";
+                })
+            ),
+        [npcFigures, sceneArtifacts.length, showArtifacts]
+    );
+    const hasSceneNpcInteractions = useMemo(
+        () =>
+            npcFigures.some((npcFigure) => {
+                const chatBubbleLines = getNpcChatBubbleLines(npcFigure);
+                return getNpcType(npcFigure, chatBubbleLines.length > 0) === "interactive";
+            }),
+        [npcFigures]
+    );
+    const sceneMerlionDefaultMessage =
+        sceneNodeKey === "city-hall"
+            ? MERLION_CITY_HALL_TUTORIAL_MESSAGE
+            : getMerlionSceneDefaultMessage(sceneLocationLabel);
+    const merlionChatMessage =
+        idleMerlionMessage ?? merlionCheckpointMessage ?? sceneMerlionDefaultMessage;
     const showOnboardingOverlay = isIntroGuideOpen && Boolean(currentOnboardingCallout);
-    const shouldHideRadarPanel = showOnboardingOverlay && isDrawerOpen;
     const onboardingStepCount = onboardingCallouts.length;
     const onboardingStepNumber =
         currentOnboardingCallout && activeOnboardingStepIndex >= 0
@@ -821,6 +1100,42 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
         }, ONBOARDING_COMPLETION_NOTICE_DURATION_MS);
         return () => window.clearTimeout(timeoutId);
     }, [showOnboardingCompletionNotice]);
+    useEffect(() => {
+        if (sceneNodeKey === "city-hall") {
+            setIsMerlionChatOpen(true);
+        }
+    }, [sceneNodeKey]);
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+
+        let idleTimeoutId: number | null = null;
+        const idleEvents = ["pointerdown", "keydown", "touchstart"] as const;
+
+        const resetIdleTimer = () => {
+            if (idleTimeoutId !== null) {
+                window.clearTimeout(idleTimeoutId);
+            }
+            setIdleMerlionMessage(null);
+            idleTimeoutId = window.setTimeout(() => {
+                setIdleMerlionMessage(MERLION_IDLE_HELP_MESSAGE);
+                setIsMerlionChatOpen(true);
+            }, 5 * 60 * 1000);
+        };
+
+        resetIdleTimer();
+        idleEvents.forEach((eventName) => {
+            window.addEventListener(eventName, resetIdleTimer, { passive: true });
+        });
+
+        return () => {
+            if (idleTimeoutId !== null) {
+                window.clearTimeout(idleTimeoutId);
+            }
+            idleEvents.forEach((eventName) => {
+                window.removeEventListener(eventName, resetIdleTimer);
+            });
+        };
+    }, []);
     const isWalking =
         isAutoWalking || pressed.up || pressed.down || pressed.left || pressed.right;
     const clampCharacterX = useCallback(
@@ -898,14 +1213,50 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
             file
         )}`;
     }, [characterSpriteBasePath, characterSprites, direction, isWalking, walkFrame]);
-    const activeDialogueNpc = useMemo(() => {
+    const dialoguePortraitSpriteSrc = useMemo(() => {
+        if (characterDialoguePortraitSprite) return characterDialoguePortraitSprite;
+        if (!characterSprites) return `${characterSpriteBasePath}/south-west.png`;
+        if (characterSprites) return characterSprites.idle.south;
+        return `${characterSpriteBasePath}/south.png`;
+    }, [characterDialoguePortraitSprite, characterSpriteBasePath, characterSprites]);
+    const dialoguePortraitFallbackSpriteSrcs = useMemo(() => {
+        const fallbackSrcs = characterSprites
+            ? [characterSprites.idle.south]
+            : [`${characterSpriteBasePath}/south-west.png`, `${characterSpriteBasePath}/south.png`];
+
+        return fallbackSrcs.filter(
+            (fallbackSrc, index) =>
+                fallbackSrc !== dialoguePortraitSpriteSrc &&
+                fallbackSrcs.indexOf(fallbackSrc) === index
+        );
+    }, [characterSpriteBasePath, characterSprites, dialoguePortraitSpriteSrc]);
+    const activeNpcFigure = useMemo(() => {
         if (!activeNpcId) return null;
-        const npcFigure = npcFigures.find((candidate) => candidate.id === activeNpcId);
+        return npcFigures.find((candidate) => candidate.id === activeNpcId) ?? null;
+    }, [activeNpcId, npcFigures]);
+    const activeNpcChatBubbleLines = activeNpcFigure
+        ? getNpcChatBubbleLines(activeNpcFigure)
+        : [];
+    const activeNpcChatBubbleIndex =
+        activeNpcFigure && activeNpcChatBubbleLines.length > 0
+            ? (npcChatCycleIndex[activeNpcFigure.id] ?? 0) %
+              activeNpcChatBubbleLines.length
+            : 0;
+    const activeNpcType = activeNpcFigure
+        ? getNpcType(activeNpcFigure, activeNpcChatBubbleLines.length > 0)
+        : "non-interactive";
+    const activeNpcUsesExtendedDialogue =
+        Boolean(activeNpcFigure) &&
+        activeNpcType === "interactive" &&
+        (activeNpcChatBubbleLines.length > 1 ||
+            (activeNpcFigure?.dialogueChoices?.length ?? 0) > 0);
+    const activeDialogueNpc = useMemo(() => {
+        const npcFigure = activeNpcFigure;
         if (!npcFigure || !npcFigure.dialogueChoices || npcFigure.dialogueChoices.length === 0) {
             return null;
         }
         return npcFigure;
-    }, [activeNpcId, npcFigures]);
+    }, [activeNpcFigure]);
     const activeDialogueChoices = activeDialogueNpc?.dialogueChoices ?? [];
     const activeDialogueSelectedChoiceId = activeDialogueNpc
         ? npcDialogueSelectionById[activeDialogueNpc.id] ?? null
@@ -922,9 +1273,48 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
         : false;
     const shouldRenderActiveDialogueBubble =
         Boolean(activeDialogueNpc) &&
+        !activeNpcUsesExtendedDialogue &&
         (
             (!activeDialogueSelectedChoice && activeDialogueChoicesVisible) ||
             (activeDialogueSelectedChoice && !activeDialogueReplyVisible)
+        );
+    const activeExtendedDialogueChoices =
+        activeNpcUsesExtendedDialogue &&
+        activeDialogueNpc &&
+        !activeDialogueSelectedChoice &&
+        activeDialogueChoicesVisible
+            ? activeDialogueChoices
+            : [];
+    const activeExtendedDialogueSpeaker =
+        activeNpcUsesExtendedDialogue &&
+        (
+            activeExtendedDialogueChoices.length > 0 ||
+            (activeDialogueSelectedChoice && !activeDialogueReplyVisible)
+        )
+            ? "player"
+            : "npc";
+    const activeExtendedDialogueText =
+        activeNpcUsesExtendedDialogue && activeDialogueSelectedChoice
+            ? activeDialogueReplyVisible
+                ? activeDialogueSelectedChoice.npcReply
+                : activeDialogueSelectedChoice.playerText ?? activeDialogueSelectedChoice.label
+            : activeNpcUsesExtendedDialogue && !activeDialogueChoicesVisible
+                ? activeNpcChatBubbleLines[activeNpcChatBubbleIndex] ?? ""
+                : "";
+    const activeExtendedDialogueNpcImage =
+        activeNpcFigure
+            ? resolveFrontFacingNpcImage(
+                  activeNpcFigure.imageOnChatOpen ?? activeNpcFigure.image
+              )
+            : "";
+    const activeExtendedDialogueNpcSpeaker =
+        activeNpcFigure?.chatBubbleSpeaker ?? activeNpcFigure?.name ?? "NPC";
+    const shouldRenderExtendedDialogueOverlay =
+        Boolean(activeNpcFigure) &&
+        activeNpcUsesExtendedDialogue &&
+        (
+            activeExtendedDialogueText.length > 0 ||
+            activeExtendedDialogueChoices.length > 0
         );
     const runNpcTransition = useCallback((npcId: string) => {
         const matchingTransition = config.npcTransitions?.find(
@@ -945,7 +1335,85 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
         return true;
     }, [config.npcTransitions, config.sceneAnimatedElements]);
     const activeArtifact = sceneArtifacts[activeArtifactIndex] ?? sceneArtifacts[0];
-    const activeArtifactSourceLabel = getArtifactSourceLabel(activeArtifact);
+    const sideQuestById = useMemo(
+        () =>
+            new Map(
+                [...GLOBAL_SIDE_QUESTS, ...(config.sideQuests ?? [])].map((sideQuest) => [
+                    sideQuest.id,
+                    sideQuest,
+                ])
+            ),
+        [config.sideQuests]
+    );
+    const activeSideQuest = activeSideQuestId
+        ? sideQuestById.get(activeSideQuestId) ?? null
+        : null;
+    const acceptedSideQuests = acceptedSideQuestIds
+        .filter(() => selectedCharacterCode === "CS")
+        .map((sideQuestId) => sideQuestById.get(sideQuestId))
+        .filter((sideQuest): sideQuest is SceneSideQuest => Boolean(sideQuest));
+    const isSideQuestAccepted = useCallback(
+        (sideQuestId: string) => acceptedSideQuestIds.includes(sideQuestId),
+        [acceptedSideQuestIds]
+    );
+    const getCompletedSideQuestActionIds = useCallback(
+        (sideQuestId: string) => completedSideQuestActions[sideQuestId] ?? [],
+        [completedSideQuestActions]
+    );
+    const areSideQuestActionRequirementsMet = useCallback(
+        (trigger: Pick<SceneSideQuestActionTrigger, "sideQuestId" | "requiredCompletedActionIds">) => {
+            const completedActionIds = getCompletedSideQuestActionIds(trigger.sideQuestId);
+            return (trigger.requiredCompletedActionIds ?? []).every((actionId) =>
+                completedActionIds.includes(actionId)
+            );
+        },
+        [getCompletedSideQuestActionIds]
+    );
+    const isSideQuestActionComplete = useCallback(
+        (sideQuestId: string, actionId: string) =>
+            getCompletedSideQuestActionIds(sideQuestId).includes(actionId),
+        [getCompletedSideQuestActionIds]
+    );
+    const activeSideQuestCompletedActionIds = activeSideQuest
+        ? getCompletedSideQuestActionIds(activeSideQuest.id)
+        : [];
+    const isActiveSideQuestAccepted = activeSideQuest
+        ? isSideQuestAccepted(activeSideQuest.id)
+        : false;
+    const isActiveSideQuestDone = activeSideQuest
+        ? activeSideQuest.actions.every((action) =>
+            activeSideQuestCompletedActionIds.includes(action.id)
+        )
+        : false;
+    const activeArtifactChatInput = artifactChatInputsById[activeArtifact.id] ?? "";
+    const activeArtifactChatMessages = artifactChatMessagesById[activeArtifact.id] ?? [];
+    const scrollActiveArtifactChatToBottom = useCallback(() => {
+        const scrollElement = artifactChatScrollRef.current;
+        if (!scrollElement) return;
+        scrollElement.scrollTop = scrollElement.scrollHeight;
+    }, []);
+    const sendArtifactChatMessage = useCallback(() => {
+        const text = (artifactChatInputsById[activeArtifact.id] ?? "").trim();
+        if (!text) return;
+
+        setArtifactChatMessagesById((prev) => ({
+            ...prev,
+            [activeArtifact.id]: [
+                ...(prev[activeArtifact.id] ?? []),
+                {
+                    id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+                    sender: "user",
+                    text,
+                },
+            ],
+        }));
+        setArtifactChatInputsById((prev) => ({
+            ...prev,
+            [activeArtifact.id]: "",
+        }));
+
+        window.requestAnimationFrame(scrollActiveArtifactChatToBottom);
+    }, [activeArtifact.id, artifactChatInputsById, scrollActiveArtifactChatToBottom]);
     const registerNpcDispositionInteraction = useCallback(
         (npcFigure: SceneNpcFigure) => {
             const hasChatBubble = getNpcChatBubbleLines(npcFigure).length > 0;
@@ -975,14 +1443,6 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
         },
         [selectedCharacterCode]
     );
-    const openArtifactSourcePage = useCallback((artifact: SceneArtifact | undefined) => {
-        if (typeof window === "undefined") return;
-        window.open(
-            artifact?.rootsUrl ?? ROOTS_COLLECTION_URL,
-            "_blank",
-            "noopener,noreferrer"
-        );
-    }, []);
     const stopAmbientAudio = useCallback(() => {
         pendingAmbientPlaybackRef.current = false;
         disposeAudioElement(ambientAudioRef.current);
@@ -1199,6 +1659,13 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
             clearNpcDialogueReplyTimeout(npcId);
             const npcFigure = npcFigures.find((candidate) => candidate.id === npcId);
             if (npcFigure) {
+                const hasChatBubble = getNpcChatBubbleLines(npcFigure).length > 0;
+                const npcType = getNpcType(npcFigure, hasChatBubble);
+                if (npcType === "artifact") {
+                    setHasInteractedWithSceneArtifact(true);
+                } else if (npcType === "interactive") {
+                    setHasInteractedWithSceneNpc(true);
+                }
                 registerNpcDispositionInteraction(npcFigure);
                 playInteractionSound(npcFigure.interactionSound);
             }
@@ -1289,6 +1756,49 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
         },
         [finishNpcChat, stopNpcAutoAdvance]
     );
+    const advanceActiveExtendedDialogue = useCallback(() => {
+        if (!activeNpcFigure || !activeNpcUsesExtendedDialogue) return;
+
+        if (activeDialogueNpc) {
+            if (activeDialogueSelectedChoice) {
+                if (!activeDialogueReplyVisible) {
+                    setNpcDialogueReplyVisibleById((prev) => ({
+                        ...prev,
+                        [activeDialogueNpc.id]: true,
+                    }));
+                    return;
+                }
+
+                finishNpcChat(activeDialogueNpc.id);
+                return;
+            }
+
+            if (!activeDialogueChoicesVisible) {
+                setNpcDialogueChoicesVisibleById((prev) => ({
+                    ...prev,
+                    [activeDialogueNpc.id]: true,
+                }));
+            }
+            return;
+        }
+
+        advanceNpcChat(
+            activeNpcFigure.id,
+            activeNpcChatBubbleIndex,
+            activeNpcChatBubbleLines.length
+        );
+    }, [
+        activeDialogueChoicesVisible,
+        activeDialogueNpc,
+        activeDialogueReplyVisible,
+        activeDialogueSelectedChoice,
+        activeNpcChatBubbleIndex,
+        activeNpcChatBubbleLines.length,
+        activeNpcFigure,
+        activeNpcUsesExtendedDialogue,
+        advanceNpcChat,
+        finishNpcChat,
+    ]);
     const openArtifactDrawerById = useCallback(
         (artifactId: string | undefined) => {
             if (!artifactId) return;
@@ -1297,13 +1807,24 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
             );
             if (artifactIndex < 0) return;
             const artifact = sceneArtifacts[artifactIndex];
+            setHasInteractedWithSceneArtifact(true);
             registerArtifactDispositionInteraction(artifactId);
+            if (
+                artifact.sideQuestActionOnOpen &&
+                isSideQuestAccepted(artifact.sideQuestActionOnOpen.sideQuestId) &&
+                areSideQuestActionRequirementsMet(artifact.sideQuestActionOnOpen)
+            ) {
+                completeSideQuestAction(
+                    artifact.sideQuestActionOnOpen.sideQuestId,
+                    artifact.sideQuestActionOnOpen.actionId
+                );
+            }
             pendingRouteRef.current = null;
             pendingNpcInteractionRef.current = null;
             pendingArtifactNpcInteractionRef.current = null;
             setActiveArtifactIndex(artifactIndex);
             playInteractionSound(artifact?.interactionSound);
-            setDrawerFocus("roots");
+            setDrawerFocus("close");
             setIsDrawerOpen(true);
             completeOnboardingStep({
                 type: "artifact-look-closer",
@@ -1314,6 +1835,8 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
             completeOnboardingStep,
             playInteractionSound,
             registerArtifactDispositionInteraction,
+            areSideQuestActionRequirementsMet,
+            isSideQuestAccepted,
             sceneArtifacts,
         ]
     );
@@ -1343,6 +1866,53 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
         x: base.x - CHARACTER_SIZE / 2,
         y: base.y - CHARACTER_SIZE,
     });
+    const showMapExitNudgeIfNeeded = useCallback(() => {
+        const nudgeCandidates: { key: string; message: string }[] = [];
+        const hasInactiveStudentBusDepotQuest =
+            selectedCharacterCode === "CS" &&
+            sceneNodeKey === "bus-depot" &&
+            !acceptedSideQuestIds.includes(STUDENT_HUNGRY_BUS_WORKERS_SIDE_QUEST_ID);
+
+        if (hasInactiveStudentBusDepotQuest) {
+            nudgeCandidates.push({
+                key: "student-bus-depot-side-quest",
+                message: getMerlionSideQuestNpcNudgeMessage("Bus worker"),
+            });
+        }
+
+        if (hasSceneArtifactInteractions && !hasInteractedWithSceneArtifact) {
+            nudgeCandidates.push({
+                key: "scene-artifacts",
+                message: getMerlionArtifactNudgeMessage(sceneLocationLabel),
+            });
+        }
+
+        if (hasSceneNpcInteractions && !hasInteractedWithSceneNpc) {
+            nudgeCandidates.push({
+                key: "scene-npcs",
+                message: getMerlionNpcNudgeMessage(sceneNodeKey),
+            });
+        }
+
+        const nextNudge = nudgeCandidates.find(
+            (candidate) => !shownMapExitNudgesRef.current.has(candidate.key)
+        );
+        if (!nextNudge) return false;
+
+        shownMapExitNudgesRef.current.add(nextNudge.key);
+        setMerlionCheckpointMessage(nextNudge.message);
+        setIsMerlionChatOpen(true);
+        return true;
+    }, [
+        acceptedSideQuestIds,
+        hasInteractedWithSceneArtifact,
+        hasInteractedWithSceneNpc,
+        hasSceneArtifactInteractions,
+        hasSceneNpcInteractions,
+        sceneLocationLabel,
+        sceneNodeKey,
+        selectedCharacterCode,
+    ]);
     const walkToMapAndNavigate = () => {
         if (isRouteLoadingRef.current) return;
         if (isIntroGuideOpenRef.current) return;
@@ -1578,6 +2148,16 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
     useEffect(() => {
         drawerFocusRef.current = drawerFocus;
     }, [drawerFocus]);
+
+    useEffect(() => {
+        if (!isDrawerOpen) return;
+        window.requestAnimationFrame(scrollActiveArtifactChatToBottom);
+    }, [
+        activeArtifact.id,
+        activeArtifactChatMessages.length,
+        isDrawerOpen,
+        scrollActiveArtifactChatToBottom,
+    ]);
 
     useEffect(() => {
         if (typeof window === "undefined") return;
@@ -1840,6 +2420,19 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
     }, [isMenuOpen]);
 
     useEffect(() => {
+        if (!activeSideQuest) return;
+
+        const handleSideQuestKeys = (event: KeyboardEvent) => {
+            if (event.key !== "Escape") return;
+            event.preventDefault();
+            setActiveSideQuestId(null);
+        };
+
+        window.addEventListener("keydown", handleSideQuestKeys);
+        return () => window.removeEventListener("keydown", handleSideQuestKeys);
+    }, [activeSideQuest]);
+
+    useEffect(() => {
         if (!isDrawerOpen || !activeArtifact) return;
 
         const handleDrawerKeys = (event: KeyboardEvent) => {
@@ -1859,10 +2452,6 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
             if (event.key === "Enter") {
                 if (drawerFocusRef.current === "close") {
                     setIsDrawerOpen(false);
-                    return;
-                }
-                if (drawerFocusRef.current === "roots") {
-                    openArtifactSourcePage(activeArtifact);
                 }
                 return;
             }
@@ -1873,7 +2462,7 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
             }
 
             if (event.key === "ArrowUp" || event.key === "ArrowLeft") {
-                setDrawerFocus("roots");
+                setDrawerFocus("close");
                 return;
             }
 
@@ -1885,7 +2474,7 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
 
         window.addEventListener("keydown", handleDrawerKeys);
         return () => window.removeEventListener("keydown", handleDrawerKeys);
-    }, [activeArtifact, isDrawerOpen, openArtifactSourcePage]);
+    }, [isDrawerOpen]);
 
     useEffect(() => {
         if (isAutoWalking) return;
@@ -2215,57 +2804,46 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
         >
             <aside className="scene-panel scene-panel-shell" data-ui="true">
                 <div className="scene-title-stack">
-                    <SceneTitleWithCamera>{displaySceneTitle}</SceneTitleWithCamera>
+                    <SceneTitleWithCamera>{sceneTitle}</SceneTitleWithCamera>
                     <div className="pixel-corners--wrapper">
                         <div className="pixel-corners scene-subtitle">{sceneSubtitle}</div>
                     </div>
-                    <div
-                        className="relative z-[140] mt-2"
-                        style={{
-                            pointerEvents:
-                                showOnboardingOverlay && !isOnboardingHudTarget("camera")
-                                    ? "none"
-                                    : undefined,
-                        }}
-                        data-ui="true"
-                    >
-                        {showOnboardingOverlay &&
-                            currentOnboardingCallout?.target.type === "camera-open" ? (
-                            <div className="absolute left-full top-1/2 ml-4 -translate-x-[300px] -translate-y-1/2">
-                                <SceneOnboardingBubble
-                                    callout={currentOnboardingCallout}
-                                />
+                </div>
+                <div className="scene-panel-merlion" data-ui="true">
+                    <div className="hl-merlion-hud-anchor">
+                        {isMerlionChatOpen ? (
+                            <div
+                                id="scene-merlion-chat"
+                                className="hl-merlion-chat-bubble-shell"
+                                role="status"
+                            >
+                                <div className="hl-merlion-chat-bubble npc-chat-bubble pixel-corners">
+                                    <span className="npc-chat-text">
+                                        {merlionChatMessage}
+                                    </span>
+                                </div>
                             </div>
                         ) : null}
-                        <div
-                            className={`scene-hud-focus-shell ${isOnboardingHudTarget("camera") ? "scene-onboarding-focus scene-onboarding-focus--hud" : ""}`}
+                        <button
+                            type="button"
+                            className="hl-merlion-hud-button"
+                            aria-label="Talk to Merlion"
+                            aria-expanded={isMerlionChatOpen}
+                            aria-controls="scene-merlion-chat"
+                            onClick={(event) => {
+                                event.stopPropagation();
+                                setIsMerlionChatOpen((isOpen) => !isOpen);
+                            }}
+                            disabled={showOnboardingOverlay && !isOnboardingHudTarget("map")}
                         >
-                            <SceneCameraButton
-                                reference={config.backgroundReference}
-                                onOpen={() => {
-                                    completeOnboardingStep({ type: "camera-open" });
-                                }}
-                                onClose={() => {
-                                    completeOnboardingStep({ type: "camera-close" });
-                                }}
-                                disableImplicitClose={isOnboardingCameraCloseTarget()}
-                                className={
-                                    `${isOnboardingHudTarget("camera")
-                                        ? "scene-camera-button--focus "
-                                        : ""}-mt-3`
-                                }
-                                iconClassName={
-                                    `${isOnboardingHudTarget("camera")
-                                        ? "scene-camera-button__icon--focus "
-                                        : ""}h-6 w-6 sm:h-7 sm:w-7`
-                                }
-                                closeButtonClassName={
-                                    isOnboardingCameraCloseTarget()
-                                        ? "scene-onboarding-focus scene-onboarding-focus--hud"
-                                        : undefined
-                                }
+                            <img
+                                src="/character-profile-pics/merlion.png"
+                                alt=""
+                                aria-hidden="true"
+                                className="hl-merlion-hud-icon"
+                                draggable={false}
                             />
-                        </div>
+                        </button>
                     </div>
                 </div>
                 {showCompanionAvatar ? (
@@ -2284,6 +2862,54 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
                     </div>
                 ) : null}
             </aside>
+            <div
+                className={`scene-camera-controls ${showOnboardingOverlay ? "z-[140]" : "z-10"}`}
+                style={{
+                    pointerEvents:
+                        showOnboardingOverlay && !isOnboardingHudTarget("camera")
+                            ? "none"
+                            : undefined,
+                }}
+                data-ui="true"
+            >
+                {showOnboardingOverlay &&
+                    currentOnboardingCallout?.target.type === "camera-open" ? (
+                    <div className="absolute right-full top-1/2 z-[140] mr-4 -translate-y-1/2">
+                        <SceneOnboardingBubble
+                            callout={currentOnboardingCallout}
+                        />
+                    </div>
+                ) : null}
+                <div
+                    className={`scene-hud-focus-shell ${isOnboardingHudTarget("camera") ? "scene-onboarding-focus scene-onboarding-focus--hud" : ""}`}
+                >
+                    <SceneCameraButton
+                        reference={config.backgroundReference}
+                        onOpen={() => {
+                            completeOnboardingStep({ type: "camera-open" });
+                        }}
+                        onClose={() => {
+                            completeOnboardingStep({ type: "camera-close" });
+                        }}
+                        disableImplicitClose={isOnboardingCameraCloseTarget()}
+                        className={
+                            `${isOnboardingHudTarget("camera")
+                                ? "scene-camera-button--focus "
+                                : ""}`
+                        }
+                        iconClassName={
+                            `${isOnboardingHudTarget("camera")
+                                ? "scene-camera-button__icon--focus "
+                                : ""}h-6 w-6 sm:h-7 sm:w-7`
+                        }
+                        closeButtonClassName={
+                            isOnboardingCameraCloseTarget()
+                                ? "scene-onboarding-focus scene-onboarding-focus--hud"
+                                : undefined
+                        }
+                    />
+                </div>
+            </div>
             {config.easterEggReference ? (
                 <div
                     className="absolute right-3 top-10 z-[25] flex flex-col items-center gap-2 sm:right-4 sm:top-64"
@@ -2294,9 +2920,9 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
                             <div className="pixel-corners border border-[#8a6230] bg-[#22140c] px-3 py-2 text-[#fff4dc]">
                                 <div className="artifact-label text-center text-lg leading-none sm:text-xl">
                                     {config.easterEggLabel}
-                                </div>
                             </div>
                         </div>
+                    </div>
                     ) : null}
                     <SceneCameraButton
                         reference={config.easterEggReference}
@@ -2339,6 +2965,7 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
                     pointerEvents: "none",
                     zIndex: sceneCharacterLabelZIndex,
                     animationDelay: "750ms",
+                    opacity: shouldRenderExtendedDialogueOverlay ? 0 : undefined,
                 }}
             >
                 <div
@@ -2361,6 +2988,7 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
                     zIndex: sceneCharacterZIndex,
                     animationDelay: "750ms",
                     pointerEvents: "none",
+                    opacity: shouldRenderExtendedDialogueOverlay ? 0 : undefined,
                 }}
             >
                 <img
@@ -2536,6 +3164,8 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
                     : undefined;
                 const isInteractiveNpc = npcType === "interactive" || isArtifactNpc;
                 const isCyclingDialogue = !hasDialogueChoices && chatBubbleLines.length > 1;
+                const usesExtendedDialogue =
+                    !isArtifactNpc && (isCyclingDialogue || hasDialogueChoices);
                 const activeChatIndex =
                     hasChatBubble
                         ? (npcChatCycleIndex[npcFigure.id] ?? 0) % chatBubbleLines.length
@@ -2563,15 +3193,41 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
                                 ? ""
                                 : activeChatBubbleText
                         : activeChatBubbleText;
+                const chatBubbleActionCandidates = [
+                    ...(npcFigure.chatBubbleActions ?? []),
+                    ...(npcFigure.chatBubbleAction ? [npcFigure.chatBubbleAction] : []),
+                ];
+                const completedChatBubbleAction = chatBubbleActionCandidates.find(
+                    (action) =>
+                        action.actionId &&
+                        action.completedText &&
+                        isSideQuestActionComplete(action.sideQuestId, action.actionId)
+                );
+                const activeChatBubbleAction = chatBubbleActionCandidates.find((action) => {
+                    const isAccepted = isSideQuestAccepted(action.sideQuestId);
+                    if (action.hideWhenAccepted && isAccepted) return false;
+                    if ((action.actionId || action.requiredCompletedActionIds?.length) && !isAccepted) {
+                        return false;
+                    }
+                    if (action.actionId && isSideQuestActionComplete(action.sideQuestId, action.actionId)) {
+                        return false;
+                    }
+                    return areSideQuestActionRequirementsMet(action);
+                });
+                const sideQuestAwareChatBubbleText =
+                    activeChatBubbleAction?.availableText ??
+                    completedChatBubbleAction?.completedText ??
+                    displayedChatBubbleText;
                 const fallbackArtifactChatText = isArtifactNpc
                     ? linkedArtifact?.description ??
                     linkedArtifact?.title ??
                     "Take a closer look at this object."
                     : "";
-                const bubbleText = displayedChatBubbleText || fallbackArtifactChatText;
+                const bubbleText = sideQuestAwareChatBubbleText || fallbackArtifactChatText;
                 const displayedChatSpeaker =
                     npcFigure.chatBubbleSpeaker ??
                     (isArtifactNpc && !hasChatBubble ? linkedArtifact?.title : undefined);
+                const hasChatBubbleAction = Boolean(activeChatBubbleAction);
                 const isPromptVisible = isInteractiveNpc;
                 const usesArtifactPromptIcon =
                     npcFigure.interactionPromptIcon === "artifact";
@@ -2584,8 +3240,12 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
                     activeNpcId === npcFigure.id &&
                     isInteractiveNpc &&
                     (hasChatBubble || isArtifactNpc);
+                const shouldHideSceneNpcForExtendedDialogue =
+                    isChatOpen && usesExtendedDialogue;
                 const shouldRenderNpcBubble =
-                    isChatOpen && (bubbleText.length > 0 || isArtifactNpc);
+                    isChatOpen &&
+                    !usesExtendedDialogue &&
+                    (bubbleText.length > 0 || isArtifactNpc);
                 const usesWideChatBubble = hasDialogueChoices || isArtifactNpc;
                 const npcImage =
                     isChatOpen && npcFigure.imageOnChatOpen
@@ -2627,6 +3287,7 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
                 const npcBaseStyle: CSSProperties = {
                     ...npcFigure.position,
                     zIndex: onboardingNpcCallout ? Math.max(npcZIndex, 140) : npcZIndex,
+                    opacity: shouldHideSceneNpcForExtendedDialogue ? 0 : undefined,
                     transition:
                         config.npcPositionTransitionMs && config.npcPositionTransitionMs > 0
                             ? `left ${config.npcPositionTransitionMs}ms ease, right ${config.npcPositionTransitionMs}ms ease, top ${config.npcPositionTransitionMs}ms ease, bottom ${config.npcPositionTransitionMs}ms ease, transform ${config.npcPositionTransitionMs}ms ease`
@@ -2694,7 +3355,7 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
                 return (
                     <div
                         key={npcFigure.id}
-                        className={`absolute npc-figure ${isInteractiveNpc ? "npc-figure--chat" : "npc-figure--non-interactive"} ${isArtifactNpc ? "npc-figure--artifact" : ""} ${isChatOpen ? "npc-figure--chat-open" : ""} ${onboardingNpcCallout ? "scene-onboarding-focus scene-onboarding-focus--npc" : ""} ${npcFigure.className ?? ""}`}
+                        className={`absolute npc-figure ${isInteractiveNpc ? "npc-figure--chat" : "npc-figure--non-interactive"} ${isArtifactNpc ? "npc-figure--artifact" : ""} ${isChatOpen ? "npc-figure--chat-open" : ""} ${shouldHideSceneNpcForExtendedDialogue ? "npc-figure--scene-hidden-during-dialogue" : ""} ${onboardingNpcCallout ? "scene-onboarding-focus scene-onboarding-focus--npc" : ""} ${npcFigure.className ?? ""}`}
                         style={npcStyle}
                     >
                         {onboardingNpcCallout && !shouldRenderNpcCalloutAboveBubble ? (
@@ -2734,6 +3395,7 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
                                         : {}),
                                     ...(
                                         isArtifactNpc ||
+                                            hasChatBubbleAction ||
                                             (hasDialogueChoices &&
                                                 (
                                                     (!selectedDialogueChoice &&
@@ -2778,6 +3440,31 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
                                     <span className="npc-chat-text">
                                         {bubbleText}
                                     </span>
+                                    {activeChatBubbleAction ? (
+                                        <button
+                                            type="button"
+                                            className="npc-chat-action-button pixel-corners"
+                                            onClick={(event) => {
+                                                event.stopPropagation();
+                                                if (activeChatBubbleAction.actionId) {
+                                                    completeSideQuestAction(
+                                                        activeChatBubbleAction.sideQuestId,
+                                                        activeChatBubbleAction.actionId
+                                                    );
+                                                    if (activeChatBubbleAction.openQuestAfterComplete) {
+                                                        setActiveSideQuestId(
+                                                            activeChatBubbleAction.sideQuestId
+                                                        );
+                                                    }
+                                                    return;
+                                                }
+                                                setActiveSideQuestId(activeChatBubbleAction.sideQuestId);
+                                            }}
+                                            data-ui="true"
+                                        >
+                                            {activeChatBubbleAction.label}
+                                        </button>
+                                    ) : null}
                                     {isArtifactNpc ? (
                                         <div
                                             className={`relative mt-3 self-center ${isArtifactLookCloserTarget
@@ -3183,6 +3870,36 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
                     </div>
                 );
             })}
+            {shouldRenderExtendedDialogueOverlay && activeNpcFigure ? (
+                <ExtendedDialogueOverlay
+                    npcFigure={activeNpcFigure}
+                    npcImageSrc={activeExtendedDialogueNpcImage}
+                    npcSpeakerName={activeExtendedDialogueNpcSpeaker}
+                    playerName={characterName}
+                    playerImageSrc={dialoguePortraitSpriteSrc}
+                    playerImageFallbackSrcs={dialoguePortraitFallbackSpriteSrcs}
+                    playerAlt={characterAlt}
+                    speaker={activeExtendedDialogueSpeaker}
+                    text={activeExtendedDialogueText}
+                    choices={activeExtendedDialogueChoices}
+                    onAdvance={advanceActiveExtendedDialogue}
+                    onChoiceSelect={(choice) => {
+                        if (!activeDialogueNpc) return;
+                        setNpcDialogueSelectionById((prev) => ({
+                            ...prev,
+                            [activeDialogueNpc.id]: choice.id,
+                        }));
+                        setNpcDialogueChoicesVisibleById((prev) => ({
+                            ...prev,
+                            [activeDialogueNpc.id]: false,
+                        }));
+                        setNpcDialogueReplyVisibleById((prev) => ({
+                            ...prev,
+                            [activeDialogueNpc.id]: false,
+                        }));
+                    }}
+                />
+            ) : null}
             {artifacts.map((artifact, index) => {
                 const isNear = nearArtifactIndex === index;
                 const isHovered = hoveredArtifactIndex === index;
@@ -3232,6 +3949,110 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
                     </div>
                 );
             })}
+            {activeSideQuest ? (
+                <div
+                    className="sidequest-lightbox-overlay"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="sidequest-lightbox-title"
+                    data-ui="true"
+                >
+                    <div className="sidequest-lightbox-shell">
+                        <div className="sidequest-lightbox-frame double-one-step">
+                            <div className="sidequest-lightbox-panel one-step-border__content">
+                                <button
+                                    type="button"
+                                    className="sidequest-lightbox-close hl-pixel-close-button"
+                                    onClick={() => setActiveSideQuestId(null)}
+                                    aria-label="Close quest lightbox"
+                                >
+                                    ×
+                                </button>
+                                <div className="sidequest-lightbox-kicker">
+                                    {activeSideQuest.iconSrc ? (
+                                        <img
+                                            src={activeSideQuest.iconSrc}
+                                            alt={activeSideQuest.iconAlt ?? ""}
+                                            aria-hidden={activeSideQuest.iconAlt ? undefined : true}
+                                        />
+                                    ) : null}
+                                    <span>{activeSideQuest.typeLabel}</span>
+                                </div>
+                                <h2 id="sidequest-lightbox-title">{activeSideQuest.title}</h2>
+                                {isActiveSideQuestDone ? (
+                                    <div className="sidequest-lightbox-done-banner">DONE</div>
+                                ) : null}
+                                {activeSideQuest.previewImage ? (
+                                    <div className="sidequest-lightbox-preview">
+                                        <img
+                                            src={activeSideQuest.previewImage}
+                                            alt={activeSideQuest.previewAlt ?? ""}
+                                            className="sidequest-lightbox-preview__background"
+                                        />
+                                        {activeSideQuest.previewNpcImage ? (
+                                            <img
+                                                src={activeSideQuest.previewNpcImage}
+                                                alt={activeSideQuest.previewNpcAlt ?? ""}
+                                                className="sidequest-lightbox-preview__npc"
+                                            />
+                                        ) : null}
+                                    </div>
+                                ) : null}
+                                <p className="sidequest-lightbox-description">
+                                    {activeSideQuest.description}
+                                </p>
+                                <div className="sidequest-lightbox-actions-label">Actions</div>
+                                <ol className="sidequest-lightbox-actions">
+                                    {activeSideQuest.actions.map((action, index) => {
+                                        const isActionComplete =
+                                            activeSideQuestCompletedActionIds.includes(action.id);
+
+                                        return (
+                                        <li
+                                            key={action.id}
+                                            className={
+                                                isActionComplete
+                                                    ? "sidequest-lightbox-action--done"
+                                                    : undefined
+                                            }
+                                        >
+                                            <span className="sidequest-lightbox-action-number">
+                                                {isActionComplete ? "✓" : index + 1}
+                                            </span>
+                                            {action.iconSrc ? (
+                                                <img src={action.iconSrc} alt={action.iconAlt ?? ""} />
+                                            ) : null}
+                                            <span>{action.label}</span>
+                                        </li>
+                                        );
+                                    })}
+                                </ol>
+                            </div>
+                        </div>
+                        {!isActiveSideQuestAccepted ? (
+                            <div className="sidequest-lightbox-buttons">
+                            <button
+                                type="button"
+                                className="sidequest-lightbox-button sidequest-lightbox-button--later pixel-corners"
+                                onClick={() => setActiveSideQuestId(null)}
+                            >
+                                {activeSideQuest.laterLabel ?? "Later"}
+                            </button>
+                            <button
+                                type="button"
+                                className="sidequest-lightbox-button sidequest-lightbox-button--accept pixel-corners"
+                                onClick={() => {
+                                    acceptSideQuest(activeSideQuest.id);
+                                    setActiveSideQuestId(null);
+                                }}
+                            >
+                                {activeSideQuest.acceptLabel ?? "Take it"}
+                            </button>
+                        </div>
+                        ) : null}
+                    </div>
+                </div>
+            ) : null}
             {isDrawerOpen && activeArtifact ? (
                 <div
                     className="ai-chat-drawer-overlay"
@@ -3245,7 +4066,7 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
                     <div
                         className="artifact-drawer-shell relative z-10"
                         style={{
-                            width: "min(76vw, 1100px)",
+                            width: "min(90vw, 1205px)",
                             maxWidth: "calc(100vw - 1.5rem)",
                         }}
                     >
@@ -3260,70 +4081,86 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
                             </div>
                         ) : null}
                         <div
-                            className="artifact-drawer-panel pixel-corners"
+                            className="artifact-drawer-panel artifact-drawer-panel--framed"
                             style={{
                                 width: "100%",
-                                height: "78vh",
+                                height: "min(78vh, 800px)",
                                 maxHeight: "calc(100vh - 1.5rem)",
                                 overflow: "hidden",
                                 display: "flex",
                                 flexDirection: "column",
-                                background: "#d27d2c",
+                                position: "relative",
+                                border: 0,
+                                borderRadius: 0,
+                                background: "transparent",
+                                boxShadow: "none",
+                                color: "#1a1513",
+                                padding: "clamp(2.1rem, 3.25vw, 4.75rem) clamp(2.3rem, 5.5vw, 5.75rem)",
                             }}
                         >
-                            <div className="flex items-start justify-between gap-4">
-                                <div>
-                                    <div className="artifact-label">
-                                        Learn About This Object
-                                    </div>
-                                    <div className="mt-2 text-sm uppercase tracking-[0.3em] text-[#b5a79e]">
-                                        Artifact
-                                    </div>
-                                </div>
-                                <div className="relative">
-                                    <button
-                                        type="button"
-                                        className={`pixel-corners flex h-12 w-12 items-center justify-center border border-[#7a1010] bg-[#d94141] text-2xl leading-none text-[#fff4dc] ${isOnboardingArtifactTarget(
-                                            activeArtifact.id,
-                                            "artifact-close"
-                                        )
-                                            ? "scene-onboarding-focus scene-onboarding-focus--hud scene-onboarding-focus--artifact-action"
-                                            : ""}`}
-                                        onClick={() => {
-                                            completeOnboardingStep({
-                                                type: "artifact-close",
-                                                artifactId: activeArtifact.id,
-                                            });
-                                            setIsDrawerOpen(false);
-                                        }}
-                                        aria-label="Close drawer"
-                                        style={{
-                                            flexShrink: 0,
-                                            outline:
-                                                drawerFocus === "close" ? "2px solid #ffff00" : "none",
+                            <ArtifactDrawerFrame />
+                            <button
+                                type="button"
+                                className={`artifact-drawer-close hl-pixel-close-button ${isOnboardingArtifactTarget(
+                                    activeArtifact.id,
+                                    "artifact-close"
+                                )
+                                    ? "scene-onboarding-focus scene-onboarding-focus--hud scene-onboarding-focus--artifact-action"
+                                    : ""}`}
+                                onClick={() => {
+                                    completeOnboardingStep({
+                                        type: "artifact-close",
+                                        artifactId: activeArtifact.id,
+                                    });
+                                    setIsDrawerOpen(false);
+                                }}
+                                aria-label="Close drawer"
+                                style={
+                                    drawerFocus === "close"
+                                        ? {
+                                            outline: "2px solid #ffff00",
                                             outlineOffset: "2px",
-                                        }}
-                                    >
-                                        ×
-                                    </button>
+                                        }
+                                        : undefined
+                                }
+                            >
+                                ×
+                            </button>
+                            <div
+                                className="artifact-drawer-panel__content"
+                                style={{
+                                    position: "relative",
+                                    zIndex: 1,
+                                    display: "flex",
+                                    minHeight: 0,
+                                    height: "100%",
+                                    flex: 1,
+                                    flexDirection: "column",
+                                }}
+                            >
+                            <div className="artifact-drawer-header flex items-start gap-4">
+                                <div className="min-w-0">
+                                    <div className="artifact-label artifact-drawer-kicker">
+                                        Artefact
+                                    </div>
                                 </div>
                             </div>
                             <div
-                                className="mt-4 grid min-h-0 flex-1 gap-4"
+                                className="artifact-drawer-pages mt-3 grid min-h-0 flex-1 gap-4"
                                 style={{
-                                    gridTemplateColumns: "minmax(0, 0.46fr) minmax(0, 0.54fr)",
+                                    gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)",
                                 }}
                             >
-                                <div className="flex min-h-0 flex-col gap-4">
-                                    <div className="pixel-corners flex min-h-0 flex-1 flex-col rounded-2xl border border-[#3b2f28] bg-[#140c1c] p-3">
-                                        <div className="artifact-label mb-2 text-center text-xl text-[#f6eada] sm:text-2xl">
+                                <div className="artifact-book-page artifact-book-page--left flex min-h-0 flex-col gap-4">
+                                    <div className="artifact-book-preview flex min-h-0 flex-1 flex-col">
+                                        <div className="artifact-label mb-3 text-3xl leading-none text-[#111110] sm:text-4xl">
                                             {activeArtifact.title}
                                         </div>
                                         <div className="flex min-h-0 flex-1 items-center justify-center">
                                             <img
                                                 src={activeArtifact.detailImage ?? activeArtifact.image}
                                                 alt={activeArtifact.detailAlt ?? activeArtifact.alt}
-                                                className="h-auto w-full rounded-xl"
+                                                className="artifact-book-preview__image h-auto w-full"
                                                 style={{
                                                     maxHeight: "100%",
                                                     objectFit: "contain",
@@ -3331,113 +4168,119 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
                                             />
                                         </div>
                                     </div>
-                                    <div className="pixel-corners rounded-2xl border border-[#3b2f28] bg-[#140c1c] p-4 text-[0.95rem] leading-normal">
-                                        <button
-                                            type="button"
-                                            className="artifact-label artifact-button pixel-corners w-full rounded-full border border-[#bfae82] px-4 py-2 uppercase tracking-[0.2em]"
-                                            style={{
-                                                background:
-                                                    drawerFocus === "roots" ? "#ffff00" : "#1a1513",
-                                                color: drawerFocus === "roots" ? "#1a1513" : undefined,
-                                            }}
-                                            onClick={() => openArtifactSourcePage(activeArtifact)}
-                                        >
-                                            {activeArtifactSourceLabel}
-                                        </button>
-                                    </div>
                                 </div>
-                                <div className="pixel-corners min-h-0 overflow-hidden rounded-2xl border border-[#3b2f28] bg-[#f6d07d] p-4 text-[1.05rem] leading-relaxed text-[#1a1513] sm:p-5">
-                                    <div className="artifact-label text-xl text-[#1a1513] sm:text-2xl">
-                                        About this object
-                                    </div>
-                                    <p className="mt-3 text-[clamp(1.08rem,0.68vw+0.9rem,1.28rem)] leading-[1.28]">
-                                        {activeArtifact.description}
-                                    </p>
-                                    {activeArtifact.details ? (
-                                        <p className="mt-3 text-[clamp(1.08rem,0.68vw+0.9rem,1.28rem)] leading-[1.28]">
-                                            {activeArtifact.details}
-                                        </p>
-                                    ) : null}
-                                    {activeArtifact.didYouKnow ? (
-                                        <div className="pixel-corners mt-4 rounded-2xl border border-[#3b2f28] bg-[#f6eada] p-4 text-[#1a1513]">
-                                            <div className="artifact-label text-lg text-[#1a1513] sm:text-xl">
-                                                Did you know?
+                                <div className="artifact-book-page artifact-book-page--right min-h-0 overflow-auto text-[1.05rem] leading-relaxed text-[#5a2a08]">
+                                    <div className="artifact-chat-stack">
+                                        <div
+                                            className="artifact-chat-scroll"
+                                            ref={artifactChatScrollRef}
+                                        >
+                                            <div className="artifact-chat-copy">
+                                                <p>{activeArtifact.description}</p>
+                                                {activeArtifact.details ? (
+                                                    <p>{activeArtifact.details}</p>
+                                                ) : null}
+                                                {activeArtifact.didYouKnow ? (
+                                                    <p>{activeArtifact.didYouKnow}</p>
+                                                ) : null}
                                             </div>
-                                            <p className="mt-2 text-[clamp(1rem,0.58vw+0.85rem,1.14rem)] leading-[1.28]">
-                                                {activeArtifact.didYouKnow}
-                                            </p>
+                                            <div className="artifact-chat-bubble artifact-chat-bubble--user">
+                                                {activeArtifact.chat.user1}
+                                            </div>
+                                            <div className="artifact-chat-copy">
+                                                <p>{activeArtifact.chat.master2}</p>
+                                            </div>
+                                            {activeArtifactChatMessages.map((message) => (
+                                                <div
+                                                    key={message.id}
+                                                    className="artifact-chat-bubble artifact-chat-bubble--user"
+                                                >
+                                                    {message.text}
+                                                </div>
+                                            ))}
                                         </div>
-                                    ) : null}
+                                        <div className="artifact-chat-actions">
+                                            <button type="button">Questions for Artefact</button>
+                                            <button type="button">Questions for Artefact</button>
+                                        </div>
+                                        <div className="artifact-chat-composer">
+                                            <input
+                                                type="text"
+                                                value={activeArtifactChatInput}
+                                                onChange={(event) => {
+                                                    setArtifactChatInputsById((prev) => ({
+                                                        ...prev,
+                                                        [activeArtifact.id]: event.target.value,
+                                                    }));
+                                                }}
+                                                onKeyDown={(event) => {
+                                                    if (event.key !== "Enter") return;
+                                                    event.preventDefault();
+                                                    sendArtifactChatMessage();
+                                                }}
+                                                placeholder={`Type a question about ${activeArtifact.title}...`}
+                                                aria-label={`Type a question about ${activeArtifact.title}`}
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={sendArtifactChatMessage}
+                                            >
+                                                Send
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
+            </div>
             ) : null}
-            {!shouldHideRadarPanel ? (
+            {acceptedSideQuests.length > 0 ? (
                 <div
-                    className={`absolute right-6 top-6 inventory-rise-in ${showOnboardingOverlay ? "z-[140]" : "z-10"}`}
+                    className={`scene-sidequest-controls inventory-rise-in ${showOnboardingOverlay ? "z-[140]" : "z-10"}`}
                     data-ui="true"
                 >
-                    {showOnboardingOverlay &&
-                        currentOnboardingCallout?.target.type === "disposition-radar" ? (
-                        <div className="absolute right-full top-1/2 z-[140] mr-5 -translate-y-1/2">
-                            <SceneOnboardingBubble callout={currentOnboardingCallout} />
-                        </div>
-                    ) : null}
-                    <div
-                        className={`scene-hud-focus-shell relative ${isOnboardingHudTarget("radar") ? "scene-onboarding-focus scene-onboarding-focus--hud" : ""}`}
-                    >
-                        <DispositionRadarPanel
-                            className={`scene-radar-panel ${isOnboardingHudTarget("radar") ? "scene-radar-panel--interactive" : ""}`.trim()}
-                            selectedCharacterCode={selectedCharacterCode}
-                            role={isOnboardingHudTarget("radar") ? "button" : undefined}
-                            tabIndex={isOnboardingHudTarget("radar") ? 0 : undefined}
-                            onClick={
-                                isOnboardingHudTarget("radar")
-                                    ? (event) => {
-                                        event.stopPropagation();
-                                        completeOnboardingStep({ type: "disposition-radar" });
-                                    }
-                                    : undefined
-                            }
-                            onKeyDown={
-                                isOnboardingHudTarget("radar")
-                                    ? (event) => {
-                                        if (
-                                            event.key !== "Enter" &&
-                                            event.key !== " " &&
-                                            event.key !== "Spacebar"
-                                        ) {
-                                            return;
-                                        }
-                                        event.preventDefault();
-                                        event.stopPropagation();
-                                        completeOnboardingStep({ type: "disposition-radar" });
-                                    }
-                                    : undefined
-                            }
-                        />
+                    <div className="scene-sidequest-button-stack">
+                        {acceptedSideQuests.map((sideQuest) => (
+                            <button
+                                key={sideQuest.id}
+                                type="button"
+                                className="scene-sidequest-button"
+                                onClick={(event) => {
+                                    event.stopPropagation();
+                                    setActiveSideQuestId(sideQuest.id);
+                                }}
+                                aria-label={`Open quest: ${sideQuest.title}`}
+                            >
+                                <img
+                                    src="/icons/quest.png"
+                                    alt=""
+                                    aria-hidden="true"
+                                    draggable={false}
+                                />
+                            </button>
+                        ))}
                     </div>
                 </div>
             ) : null}
             <div
-                className={`absolute bottom-10 left-10 flex gap-3 hud-rise-in ${showOnboardingOverlay ? "z-[140]" : "z-10"}`}
+                className={`scene-menu-help-controls hud-rise-in ${showOnboardingOverlay ? "z-[140]" : "z-10"}`}
                 data-ui="true"
             >
                 {showOnboardingOverlay &&
                     currentOnboardingCallout?.target.type === "menu-help" ? (
-                    <div className="absolute bottom-full left-1/2 mb-5 -translate-x-1/2">
+                    <div className="absolute right-full top-1/2 mr-4 -translate-y-1/2">
                         <SceneOnboardingBubble callout={currentOnboardingCallout} />
                     </div>
                 ) : null}
                 <div
-                    className={`scene-hud-focus-shell relative z-[140] flex gap-3 ${isOnboardingHudTarget("menu-help") ? "scene-onboarding-focus scene-onboarding-focus--hud" : ""}`}
+                    className={`scene-hud-focus-shell relative z-[140] flex flex-col items-end gap-3 ${isOnboardingHudTarget("menu-help") ? "scene-onboarding-focus scene-onboarding-focus--hud" : ""}`}
                 >
-                    <div className="ui-button-shell pixel-corners--wrapper">
+                    <div className="ui-button-shell ui-button-shell--menu pixel-corners--wrapper">
                         <button
                             type="button"
-                            className="ui-button ui-button--secondary pixel-corners"
+                            className="ui-button ui-button--secondary ui-button--menu pixel-corners"
                             aria-label="Menu"
                             onClick={() => {
                                 if (showOnboardingOverlay) {
@@ -3457,33 +4300,31 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
                             <span className="ui-button-icon">≡</span>
                         </button>
                     </div>
-                    <div className="ui-button-shell pixel-corners--wrapper">
-                        <button
-                            type="button"
-                            className="ui-button ui-button--secondary pixel-corners"
-                            aria-label="Help"
-                            onClick={() => {
-                                if (showOnboardingOverlay) {
-                                    if (completeOnboardingStep({ type: "menu-help" })) return;
-                                    return;
-                                }
-                                if (!sceneIntroGuide) return;
-                                if (isRouteLoadingRef.current) return;
-                                openSceneGuide();
-                            }}
-                            disabled={
-                                showOnboardingOverlay
-                                    ? !isOnboardingHudTarget("menu-help")
-                                    : isIntroGuideOpen
+                    <button
+                        type="button"
+                        className="scene-help-button"
+                        aria-label="Help"
+                        onClick={() => {
+                            if (showOnboardingOverlay) {
+                                if (completeOnboardingStep({ type: "menu-help" })) return;
+                                return;
                             }
-                        >
-                            <span className="ui-button-icon">?</span>
-                        </button>
-                    </div>
+                            if (!sceneIntroGuide) return;
+                            if (isRouteLoadingRef.current) return;
+                            openSceneGuide();
+                        }}
+                        disabled={
+                            showOnboardingOverlay
+                                ? !isOnboardingHudTarget("menu-help")
+                                : isIntroGuideOpen
+                        }
+                    >
+                        <span className="scene-help-button__mark">?</span>
+                    </button>
                 </div>
             </div>
             <div
-                className={`absolute bottom-10 right-10 flex flex-col items-center gap-2 hud-rise-in ${showOnboardingOverlay ? "z-[140]" : "z-10"}`}
+                className={`scene-map-controls hud-rise-in ${showOnboardingOverlay ? "z-[140]" : "z-10"}`}
                 data-ui="true"
             >
                 {showOnboardingOverlay &&
@@ -3498,7 +4339,7 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
                     <div className="scene-map-label artifact-label text-center text-xl sm:text-2xl">
                         {mapLabel}
                     </div>
-                    <div className="ui-button-shell pixel-corners--wrapper">
+                    <div className="ui-button-shell ui-button-shell--map pixel-corners--wrapper">
                         <button
                             type="button"
                             className="ui-button ui-button--map pixel-corners"
@@ -3508,6 +4349,7 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
                                     if (completeOnboardingStep({ type: "map" })) return;
                                     return;
                                 }
+                                if (showMapExitNudgeIfNeeded()) return;
                                 walkToMapAndNavigate();
                             }}
                             disabled={
@@ -3516,7 +4358,13 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
                                     : isIntroGuideOpen
                             }
                         >
-                            <span className="ui-button-icon">{mapEmoji}</span>
+                            <img
+                                src="/icons/map-icon.png"
+                                alt=""
+                                aria-hidden="true"
+                                className="ui-button-icon--image"
+                                draggable={false}
+                            />
                         </button>
                     </div>
                 </div>

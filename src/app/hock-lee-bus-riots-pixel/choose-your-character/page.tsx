@@ -22,12 +22,19 @@ import {
 import { clearAllDispositionProgress } from "../disposition-state";
 import { HOCK_LEE_MAP_ROUTE } from "../story-paths";
 import { SceneTitleWithCamera } from "../scene-title-with-camera";
+import {
+  SIDEQUEST_ACCEPTED_STORAGE_KEY,
+  SIDEQUEST_COMPLETED_ACTIONS_STORAGE_KEY,
+} from "../sidequest-state";
 
 const INVENTORY_STORAGE_KEY = "inventorySlots";
+const CHARACTER_SELECT_ROLE_LABELS: Partial<Record<CharacterCode, string>> = {
+  CIV: "Junior Civil Servant",
+};
 
 export default function ChooseYourCharacterPage() {
   const router = useRouter();
-  const [selectedCharacter, setSelectedCharacter] = useState<CharacterCode>("BW");
+  const [selectedCharacter, setSelectedCharacter] = useState<CharacterCode>("CIV");
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -58,13 +65,8 @@ export default function ChooseYourCharacterPage() {
   }, []);
 
   const selectedOption = CHARACTER_JOURNEY_CONTENT[selectedCharacter];
-  const selectedIndex = CHARACTER_ORDER.findIndex((character) => character === selectedCharacter);
-
-  const handleStepCharacter = (direction: -1 | 1) => {
-    const nextIndex =
-      (selectedIndex + direction + CHARACTER_ORDER.length) % CHARACTER_ORDER.length;
-    setSelectedCharacter(CHARACTER_ORDER[nextIndex]);
-  };
+  const selectedRoleLabel =
+    CHARACTER_SELECT_ROLE_LABELS[selectedCharacter] ?? CHARACTER_ROLE_LABELS[selectedCharacter];
 
   const handleBack = () => {
     if (typeof window !== "undefined" && window.history.length > 1) {
@@ -83,6 +85,8 @@ export default function ChooseYourCharacterPage() {
     window.localStorage.removeItem(MAP_VISITED_PROGRESS_KEY);
     window.localStorage.removeItem(MAP_UNLOCK_ANIMATION_SCENE_KEY);
     window.localStorage.removeItem(INVENTORY_STORAGE_KEY);
+    window.localStorage.removeItem(SIDEQUEST_ACCEPTED_STORAGE_KEY);
+    window.localStorage.removeItem(SIDEQUEST_COMPLETED_ACTIONS_STORAGE_KEY);
     clearAllDispositionProgress();
 
     startTransition(() => {
@@ -91,47 +95,9 @@ export default function ChooseYourCharacterPage() {
   };
 
   return (
-    <main className="hl-character-select-page">
+    <main className="hl-character-select-page hl-character-select-page--choose">
       <div className="hl-character-select-stage">
-        <div className="hl-character-select-header">
-          <div className="scene-title-stack">
-            <SceneTitleWithCamera>Choose A Character</SceneTitleWithCamera>
-          </div>
-        </div>
-
         <section className="hl-character-select-layout">
-          <div className="pixel-corners--wrapper hl-character-select-panel-shell">
-            <article className="pixel-corners hl-character-select-panel">
-              <div className="pixel-corners--wrapper hl-character-select-mission-shell">
-                <div
-                  className="scene-description hl-character-select-mission pixel-corners"
-                  data-collapsed="false"
-                >
-                  <div className="scene-title-stack hl-character-select-panel-stack">
-                    <SceneTitleWithCamera
-                      titleClassName="hl-character-select-role-title"
-                      wrapperClassName="hl-character-select-role-shell"
-                    >
-                      {CHARACTER_ROLE_LABELS[selectedCharacter].toUpperCase()}
-                    </SceneTitleWithCamera>
-                    <div className="pixel-corners--wrapper hl-character-select-mission-label-shell">
-                      <div className="pixel-corners scene-subtitle hl-character-select-mission-label">
-                        MISSION
-                      </div>
-                    </div>
-                  </div>
-                  <div className="scene-description-content">
-                    {selectedOption.mission.map((item) => (
-                      <div key={item} className="scene-description-line">
-                        • {item}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </article>
-          </div>
-
           <section className="hl-character-select-hero" aria-live="polite">
             <div className="hl-character-select-figure-stage">
               <div className="npc-chat-bubble-shell hl-character-select-chat-bubble">
@@ -152,80 +118,96 @@ export default function ChooseYourCharacterPage() {
                 height={460}
               />
             </div>
-            <div className="hl-character-select-mission-nav" aria-label="Switch role">
-              <button
-                aria-label={`Previous role: ${CHARACTER_LABELS[
-                  CHARACTER_ORDER[
-                    (selectedIndex - 1 + CHARACTER_ORDER.length) % CHARACTER_ORDER.length
-                  ]
-                ]
-                  }`}
-                className="pixel-corners hl-character-select-mission-arrow hl-character-select-mission-arrow--prev"
-                onClick={() => handleStepCharacter(-1)}
-                type="button"
-              >
-                <span aria-hidden="true" className="hl-character-select-mission-arrow-icon" />
-              </button>
-              <button
-                aria-label={`Next role: ${CHARACTER_LABELS[CHARACTER_ORDER[(selectedIndex + 1) % CHARACTER_ORDER.length]]
-                  }`}
-                className="pixel-corners hl-character-select-mission-arrow hl-character-select-mission-arrow--next"
-                onClick={() => handleStepCharacter(1)}
-                type="button"
-              >
-                <span aria-hidden="true" className="hl-character-select-mission-arrow-icon" />
-              </button>
-            </div>
           </section>
 
-          <section
-            aria-label="Choose one of three characters"
-            className="hl-character-select-picker"
-            role="radiogroup"
-          >
-            {CHARACTER_ORDER.map((characterCode, index) => {
-              const isSelected = characterCode === selectedCharacter;
-              const portraitVars = {
-                "--hl-character-portrait-bg": isSelected ? "#e97443" : "#a6d9fc",
-                "--hl-character-portrait-frame": isSelected ? "#ffd24a" : "#6f99b5",
-                "--hl-character-portrait-glow": isSelected
-                  ? "rgba(233, 116, 67, 0.28)"
-                  : "transparent",
-              } as CSSProperties;
+          <section className="hl-character-select-details">
+            <div className="hl-character-select-header">
+              <div className="scene-title-stack">
+                <SceneTitleWithCamera>SELECT PLAYER</SceneTitleWithCamera>
+              </div>
+            </div>
 
-              return (
-                <div
-                  key={characterCode}
-                  className={`pixel-corners--wrapper hl-character-select-portrait-shell ${index === 2 ? "hl-character-select-portrait-shell--wide" : ""
-                    }`}
-                  data-selected={isSelected}
-                  style={portraitVars}
-                >
-                  <button
-                    aria-checked={isSelected}
-                    aria-label={CHARACTER_LABELS[characterCode]}
-                    className="pixel-corners hl-character-select-portrait"
-                    onClick={() => setSelectedCharacter(characterCode)}
-                    role="radio"
-                    type="button"
+            <section
+              aria-label="Choose one of three characters"
+              className="hl-character-select-picker"
+              role="radiogroup"
+            >
+              {CHARACTER_ORDER.map((characterCode) => {
+                const isSelected = characterCode === selectedCharacter;
+                const portraitVars = {
+                  "--hl-character-portrait-bg": isSelected ? "#ff8300" : "#bfbfbf",
+                  "--hl-character-portrait-frame": isSelected ? "#111111" : "#6a6a6a",
+                  "--hl-character-portrait-glow": "transparent",
+                } as CSSProperties;
+
+                return (
+                  <div
+                    key={characterCode}
+                    className="single-one-step hl-character-select-portrait-shell"
+                    data-selected={isSelected}
+                    style={portraitVars}
                   >
-                    <Image
-                      alt=""
-                      aria-hidden="true"
-                      className="hl-character-select-portrait-image"
-                      draggable={false}
-                      src={CHARACTER_PRESENTATIONS[characterCode].markerSprite}
-                      unoptimized
-                      width={140}
-                      height={140}
-                    />
-                    <span className="hl-character-select-portrait-name">
-                      <strong>{CHARACTER_ROLE_LABELS[characterCode]}</strong>
-                    </span>
-                  </button>
+                    <button
+                      aria-checked={isSelected}
+                      aria-label={CHARACTER_LABELS[characterCode]}
+                      className="one-step-border__content hl-character-select-portrait"
+                      data-character={characterCode}
+                      onClick={() => setSelectedCharacter(characterCode)}
+                      role="radio"
+                      type="button"
+                    >
+                      <span className="hl-character-select-portrait-image-viewport">
+                        <Image
+                          alt=""
+                          aria-hidden="true"
+                          className="hl-character-select-portrait-image"
+                          draggable={false}
+                          src={CHARACTER_PRESENTATIONS[characterCode].markerSprite}
+                          unoptimized
+                          width={140}
+                          height={140}
+                        />
+                      </span>
+                      <span className="hl-character-select-portrait-name">
+                        <strong>{CHARACTER_ROLE_LABELS[characterCode]}</strong>
+                      </span>
+                    </button>
+                  </div>
+                );
+              })}
+            </section>
+
+            <div className="pixel-corners--wrapper hl-character-select-panel-shell">
+              <article className="pixel-corners hl-character-select-panel">
+                <div className="double-one-step hl-character-select-mission-shell">
+                  <div
+                    className="scene-description one-step-border__content hl-character-select-mission"
+                    data-collapsed="false"
+                  >
+                    <div className="scene-title-stack hl-character-select-panel-stack">
+                      <SceneTitleWithCamera
+                        titleClassName="hl-character-select-role-title"
+                        wrapperClassName="hl-character-select-role-shell"
+                      >
+                        {selectedRoleLabel.toUpperCase()}
+                      </SceneTitleWithCamera>
+                      <div className="pixel-corners--wrapper hl-character-select-mission-label-shell">
+                        <div className="pixel-corners scene-subtitle hl-character-select-mission-label">
+                          Mission
+                        </div>
+                      </div>
+                    </div>
+                    <div className="scene-description-content">
+                      {selectedOption.mission.map((item) => (
+                        <div key={item} className="scene-description-line">
+                          • {item}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-              );
-            })}
+              </article>
+            </div>
           </section>
         </section>
 
@@ -247,7 +229,7 @@ export default function ChooseYourCharacterPage() {
               onClick={handleSelect}
               type="button"
             >
-              {isPending ? "Loading..." : "Start Story"}
+              {isPending ? "Loading..." : "Confirm"}
             </button>
           </div>
         </div>

@@ -7,6 +7,10 @@ import type {
 } from "./base-scene-shell";
 import type { SceneBackgroundReference } from "./scene-title-with-camera";
 import { CHARACTER_LABELS, HOCK_LEE_SCENES } from "./scenes";
+import {
+  STUDENT_HUNGRY_BUS_WORKERS_ACTIONS,
+  STUDENT_HUNGRY_BUS_WORKERS_SIDE_QUEST_ID,
+} from "./sidequest-state";
 
 const REAL_PHOTO_DIRECTORY = "/background/hockleescenes/realphotos";
 
@@ -368,6 +372,36 @@ const HOME_STUDENT_TEXTBOOK_ARTIFACT: SceneArtifact = {
       "Because student politics did not begin only in protests. It also grew from the ideas, loyalties, and language students met in school and then carried home.",
   },
   rootsUrl: "https://www.roots.gov.sg/Collection-Landing/listing/1496823",
+};
+
+const HOME_STUDENT_TINGKAT_ARTIFACT: SceneArtifact = {
+  id: "student-home-tingkat",
+  title: "Tingkat Carrier",
+  image: "/artifacts/hockleebusriots/objects/Bus Driver_Home_ Tingkat.png",
+  alt: "Metal tingkat carrier in the student's home",
+  description:
+    "A tingkat carrier keeps food stacked, portable, and warm enough to carry across town.",
+  details:
+    "For the student sidequest, it becomes the practical object that turns sympathy for hungry workers into help that can actually reach the bus depot.",
+  didYouKnow:
+    "Tingkat carriers were everyday food containers, but here the object also carries care from home into a public labour dispute.",
+  inventoryIndex: 2,
+  position: {
+    left: "55.5%",
+    top: "58%",
+    width: "88px",
+  },
+  chat: {
+    master1:
+      "This tingkat can carry food to the depot without spilling or cooling too quickly.",
+    user1: "Why use this for the workers?",
+    master2:
+      "Because the sidequest needs more than concern. It needs something that can move a meal from home to the people waiting at the gates.",
+  },
+  sideQuestActionOnOpen: {
+    sideQuestId: STUDENT_HUNGRY_BUS_WORKERS_SIDE_QUEST_ID,
+    actionId: STUDENT_HUNGRY_BUS_WORKERS_ACTIONS.findTingkat,
+  },
 };
 
 const COMMAND_CENTER_RADIO_ARTIFACT: SceneArtifact = {
@@ -1647,6 +1681,22 @@ const HOME_STUDENT_ARTIFACT_NPCS: SceneNpcFigure[] = [
       left: "73.5%",
       top: "35%",
       width: "82px",
+    },
+    zIndex: 7,
+  },
+  {
+    id: "home-student-tingkat",
+    image: HOME_STUDENT_TINGKAT_ARTIFACT.image,
+    alt: HOME_STUDENT_TINGKAT_ARTIFACT.alt,
+    npcType: "artifact",
+    interactionPromptIcon: "artifact",
+    artifactId: HOME_STUDENT_TINGKAT_ARTIFACT.id,
+    chatBubbleText:
+      "A tingkat would be useful if you need to carry food to the depot.",
+    position: {
+      left: "77%",
+      top: "43%",
+      width: "136px",
     },
     zIndex: 7,
   },
@@ -3435,7 +3485,11 @@ export const PIXEL_SCENE_VARIANTS: Record<PixelSceneVariantKey, BaseSceneConfig>
       "Ong Kim Wah comes home from Hock Lee with word of dismissals, union tension, and a strike that has not yet turned violent.",
     sceneBackgroundImage: "url(/background/hockleescenes/home-of-student.png)",
     backgroundReference: buildBackgroundReference("Student Home", "Real_Student House.png"),
-    artifacts: [HOME_STUDENT_KEROSENE_LAMP_ARTIFACT, HOME_STUDENT_TEXTBOOK_ARTIFACT],
+    artifacts: [
+      HOME_STUDENT_KEROSENE_LAMP_ARTIFACT,
+      HOME_STUDENT_TEXTBOOK_ARTIFACT,
+      HOME_STUDENT_TINGKAT_ARTIFACT,
+    ],
     showArtifacts: false,
     npcFigures: [HOME_CHINESE_STUDENT_SIBLING_NPC, ...HOME_STUDENT_ARTIFACT_NPCS],
     characterScaleMultiplier: 0.935,
@@ -3467,7 +3521,11 @@ export const PIXEL_SCENE_VARIANTS: Record<PixelSceneVariantKey, BaseSceneConfig>
       "Headlines, parental fear, and silence leave the student to reckon with an identity that no longer feels innocent.",
     sceneBackgroundImage: "url(/background/hockleescenes/home-of-student.png)",
     backgroundReference: buildBackgroundReference("Student Home", "Real_Student House.png"),
-    artifacts: [HOME_STUDENT_KEROSENE_LAMP_ARTIFACT, HOME_STUDENT_TEXTBOOK_ARTIFACT],
+    artifacts: [
+      HOME_STUDENT_KEROSENE_LAMP_ARTIFACT,
+      HOME_STUDENT_TEXTBOOK_ARTIFACT,
+      HOME_STUDENT_TINGKAT_ARTIFACT,
+    ],
     showArtifacts: false,
     npcFigures: [HOME_CHINESE_STUDENT_RETURN_SIBLING_NPC, ...HOME_STUDENT_ARTIFACT_NPCS],
     characterScaleMultiplier: 0.935,

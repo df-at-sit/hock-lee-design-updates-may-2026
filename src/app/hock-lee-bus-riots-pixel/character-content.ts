@@ -1,6 +1,6 @@
 import type { CharacterCode } from "./scenes";
 
-export const CHARACTER_ORDER: CharacterCode[] = ["BW", "CIV", "CS"];
+export const CHARACTER_ORDER: CharacterCode[] = ["CIV", "BW", "CS"];
 
 export const CHARACTER_ROLE_LABELS: Record<CharacterCode, string> = {
   BW: "Bus Worker",

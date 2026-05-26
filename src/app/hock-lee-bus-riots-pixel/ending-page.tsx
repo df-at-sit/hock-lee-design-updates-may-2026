@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { MindsetKey } from "./disposition-state";
 import { DispositionRadarPanel } from "./disposition-radar-panel";
@@ -12,23 +12,42 @@ import {
   CHARACTER_PRESENTATIONS,
   getRoleSteps,
 } from "./story-data";
+import {
+  MERLION_STUDENT_HUNGRY_BUS_WORKERS_INCOMPLETE_MESSAGE,
+  getMerlionCompletionMessage,
+} from "./merlion-checkpoints";
+import {
+  GLOBAL_SIDE_QUESTS,
+  STUDENT_HUNGRY_BUS_WORKERS_SIDE_QUEST_ID,
+  useAcceptedSideQuestIds,
+  useCompletedSideQuestActions,
+} from "./sidequest-state";
 import { HOCK_LEE_MAP_ROUTE, WHAT_REALLY_HAPPENED_ROUTE } from "./story-paths";
 import { useSelectedCharacterCode } from "./use-selected-character-code";
 
-const DISPOSITION_ORDER: MindsetKey[] = [
-  "empathy",
-  "courage",
+const DISPLAY_QUALITY_LABELS = {
+  awareness: "Awareness",
+  curiosity: "Curiosity",
+  empathy: "Empathy",
+} as const;
+
+type DisplayQualityKey = keyof typeof DISPLAY_QUALITY_LABELS;
+
+const DISPLAY_QUALITY_ORDER: DisplayQualityKey[] = [
+  "awareness",
   "curiosity",
-  "tenacity",
-  "optimism",
+  "empathy",
 ];
 
-const MINDSET_LABELS: Record<MindsetKey, string> = {
-  empathy: "Empathy",
-  courage: "Courage",
-  curiosity: "Curiosity",
-  tenacity: "Tenacity",
-  optimism: "Optimism",
+const getDisplayQualityValue = (
+  key: DisplayQualityKey,
+  profile: Record<MindsetKey, number>
+) => {
+  if (key === "awareness") {
+    return Math.round((profile.courage + profile.tenacity + profile.optimism) / 3);
+  }
+
+  return profile[key];
 };
 
 const buildFocusSummary = (
@@ -36,15 +55,18 @@ const buildFocusSummary = (
   interactionCount: number
 ) => {
   if (interactionCount === 0) {
-    return "Your chart is still at its starting baseline because this route has not recorded any unique interactions yet.";
+    return "Your bars are still at their starting baseline because this route has not recorded any unique interactions yet.";
   }
 
-  const strongestMindsets = [...DISPOSITION_ORDER]
-    .sort((left, right) => profile[right] - profile[left])
+  const strongestQualities = [...DISPLAY_QUALITY_ORDER]
+    .sort(
+      (left, right) =>
+        getDisplayQualityValue(right, profile) - getDisplayQualityValue(left, profile)
+    )
     .slice(0, 2)
-    .map((mindsetKey) => MINDSET_LABELS[mindsetKey].toLowerCase());
+    .map((qualityKey) => DISPLAY_QUALITY_LABELS[qualityKey].toLowerCase());
 
-  return `You showed the strongest focus on ${strongestMindsets[0]} and ${strongestMindsets[1]} in this route.`;
+  return `You showed the strongest focus on ${strongestQualities[0]} and ${strongestQualities[1]} in this route.`;
 };
 
 const lockFullscreenPage = () => {
@@ -74,6 +96,7 @@ export function EndingPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const selectedCharacter = useSelectedCharacterCode(searchParams.get("role"));
+  const [isMerlionChatOpen, setIsMerlionChatOpen] = useState(true);
   const content = CHARACTER_JOURNEY_CONTENT[selectedCharacter];
   const presentation = CHARACTER_PRESENTATIONS[selectedCharacter];
   const roleSteps = getRoleSteps(selectedCharacter);
@@ -81,6 +104,24 @@ export function EndingPage() {
   const { interactionCount, profile } = useDispositionProfile(selectedCharacter);
   const focusSummary = buildFocusSummary(profile, interactionCount);
   const roleLabel = CHARACTER_ROLE_LABELS[selectedCharacter];
+  const acceptedSideQuestIds = useAcceptedSideQuestIds();
+  const completedSideQuestActions = useCompletedSideQuestActions();
+  const hungryBusWorkersQuest = GLOBAL_SIDE_QUESTS.find(
+    (sideQuest) => sideQuest.id === STUDENT_HUNGRY_BUS_WORKERS_SIDE_QUEST_ID
+  );
+  const isHungryBusWorkersQuestAccepted =
+    selectedCharacter === "CS" &&
+    acceptedSideQuestIds.includes(STUDENT_HUNGRY_BUS_WORKERS_SIDE_QUEST_ID);
+  const hungryBusWorkersCompletedActionIds =
+    completedSideQuestActions[STUDENT_HUNGRY_BUS_WORKERS_SIDE_QUEST_ID] ?? [];
+  const isHungryBusWorkersQuestComplete =
+    hungryBusWorkersQuest?.actions.every((action) =>
+      hungryBusWorkersCompletedActionIds.includes(action.id)
+    ) ?? false;
+  const merlionChatMessage =
+    isHungryBusWorkersQuestAccepted && !isHungryBusWorkersQuestComplete
+      ? MERLION_STUDENT_HUNGRY_BUS_WORKERS_INCOMPLETE_MESSAGE
+      : getMerlionCompletionMessage(selectedCharacter);
 
   useEffect(() => {
     router.prefetch(buildRoleAwareRoute(WHAT_REALLY_HAPPENED_ROUTE, selectedCharacter));
@@ -151,7 +192,6 @@ export function EndingPage() {
                 <div className="hl-ending-focus-layout">
                   <DispositionRadarPanel
                     className="hl-ending-radar-panel"
-                    labelChipBgOverrides={{ optimism: "#fff4dc" }}
                     selectedCharacterCode={selectedCharacter}
                   />
                   <p className="hl-ending-focus-summary">{focusSummary}</p>
@@ -160,6 +200,38 @@ export function EndingPage() {
             </div>
           </article>
         </section>
+
+        <div className="scene-panel-merlion hl-ending-merlion-panel">
+          <div className="hl-merlion-hud-anchor">
+            {isMerlionChatOpen ? (
+              <div
+                id="ending-merlion-chat"
+                className="hl-merlion-chat-bubble-shell"
+                role="status"
+              >
+                <div className="hl-merlion-chat-bubble npc-chat-bubble pixel-corners">
+                  <span className="npc-chat-text">{merlionChatMessage}</span>
+                </div>
+              </div>
+            ) : null}
+            <button
+              type="button"
+              className="hl-merlion-hud-button"
+              aria-label="Talk to Merlion"
+              aria-expanded={isMerlionChatOpen}
+              aria-controls="ending-merlion-chat"
+              onClick={() => setIsMerlionChatOpen((isOpen) => !isOpen)}
+            >
+              <img
+                src="/character-profile-pics/merlion.png"
+                alt=""
+                aria-hidden="true"
+                className="hl-merlion-hud-icon"
+                draggable={false}
+              />
+            </button>
+          </div>
+        </div>
 
         <div className="hl-character-select-actions">
           <div className="pixel-corners--wrapper hl-character-select-action-shell hl-character-select-action-shell--back">

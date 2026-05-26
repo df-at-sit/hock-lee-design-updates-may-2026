@@ -203,9 +203,7 @@ export function SceneCameraButton({
                 <button
                   aria-label="Close lightbox"
                   className={joinClasses(
-                    isEasterEggVariant
-                      ? "pixel-corners flex h-12 w-12 items-center justify-center border border-[#7db8ff] bg-[#0e2d60] text-2xl leading-none text-[#f3f8ff]"
-                      : "pixel-corners flex h-12 w-12 items-center justify-center border border-[#7a1010] bg-[#d94141] text-2xl leading-none text-[#fff4dc]",
+                    "hl-pixel-close-button",
                     closeButtonClassName
                   )}
                   onClick={() => {
@@ -388,7 +386,7 @@ export function SceneCameraButton({
       <button
         aria-label={buttonAriaLabel}
         className={joinClasses(
-          "group inline-flex shrink-0 items-center justify-center p-1",
+          "scene-camera-button group inline-flex shrink-0 items-center justify-center p-1",
           className
         )}
         onClick={() => {
@@ -402,7 +400,7 @@ export function SceneCameraButton({
           alt=""
           aria-hidden="true"
           className={joinClasses(
-            "pointer-events-none h-8 w-8 select-none object-contain transition-[filter] duration-150 [filter:drop-shadow(2px_0_0_#ffd24a)_drop-shadow(-2px_0_0_#ffd24a)_drop-shadow(0_2px_0_#ffd24a)_drop-shadow(0_-2px_0_#ffd24a)_drop-shadow(2px_2px_0_#ffd24a)_drop-shadow(-2px_2px_0_#ffd24a)_drop-shadow(2px_-2px_0_#ffd24a)_drop-shadow(-2px_-2px_0_#ffd24a)] group-hover:[filter:drop-shadow(2px_0_0_#4da3ff)_drop-shadow(-2px_0_0_#4da3ff)_drop-shadow(0_2px_0_#4da3ff)_drop-shadow(0_-2px_0_#4da3ff)_drop-shadow(2px_2px_0_#4da3ff)_drop-shadow(-2px_2px_0_#4da3ff)_drop-shadow(2px_-2px_0_#4da3ff)_drop-shadow(-2px_-2px_0_#4da3ff)] sm:h-10 sm:w-10",
+            "scene-camera-button__icon pointer-events-none h-8 w-8 select-none object-contain transition-[filter] duration-150 sm:h-10 sm:w-10",
             iconClassName
           )}
           draggable={false}

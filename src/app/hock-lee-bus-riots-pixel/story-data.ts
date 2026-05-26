@@ -93,6 +93,7 @@ export type CharacterPresentation = {
   playerAlt: string;
   markerSprite: string;
   cutsceneSprite: string;
+  dialoguePortraitSprite?: string;
   characterSpriteBasePath?: string;
   characterSprites?: CharacterSpriteSet;
 };
@@ -148,6 +149,7 @@ export const CHARACTER_PRESENTATIONS: Record<CharacterCode, CharacterPresentatio
     playerAlt: "Rajiv Menon",
     markerSprite: "/character-figures/rajivmenon/south.png",
     cutsceneSprite: "/character-figures/rajivmenon/south.png",
+    dialoguePortraitSprite: "/npcfigures/civilservant/Civil Servant_0008.webp",
     characterSpriteBasePath: "/character-figures/rajivmenon",
   },
   BW: {
@@ -179,6 +181,7 @@ export const CHARACTER_PRESENTATIONS: Record<CharacterCode, CharacterPresentatio
     playerAlt: "Ong Kim Chuan",
     markerSprite: buildStudentIdleSprite(1),
     cutsceneSprite: buildStudentIdleSprite(1),
+    dialoguePortraitSprite: buildStudentIdleSprite(8),
     characterSprites: {
       idle: {
         north: buildStudentIdleSprite(5),
@@ -200,7 +203,7 @@ export const MAP_NODE_DEFINITIONS: Record<MapNodeKey, MapNodeDefinition> = {
     label: "City Hall",
     description:
       "Labour Front takes office and is immediately judged on wages, bus grievances, and public order.",
-    position: { left: "43%", top: "65%" },
+    position: { left: "57.5%", top: "73.5%" },
     image: {
       src: "/map-nodes/cityhall.png",
       alt: "City Hall",
@@ -212,7 +215,7 @@ export const MAP_NODE_DEFINITIONS: Record<MapNodeKey, MapNodeDefinition> = {
     label: "Market",
     description:
       "Rising prices, cramped housing, and thin wages explain why labour anger spreads quickly.",
-    position: { left: "52%", top: "45%" },
+    position: { left: "32.3%", top: "31.5%" },
     image: {
       src: "/map-nodes/market.png",
       alt: "Market",
@@ -224,7 +227,7 @@ export const MAP_NODE_DEFINITIONS: Record<MapNodeKey, MapNodeDefinition> = {
     label: "Home",
     description:
       "Family talk turns depot rumours, dismissals, and strike fears into something personal.",
-    position: { left: "52%", top: "30%" },
+    position: { left: "48.7%", top: "18%" },
     image: {
       src: "/map-nodes/home.png",
       alt: "Home",
@@ -236,7 +239,7 @@ export const MAP_NODE_DEFINITIONS: Record<MapNodeKey, MapNodeDefinition> = {
     label: "Bus Depot",
     description:
       "Dismissed workers sit at the gates, block buses, and turn the dispute into open confrontation.",
-    position: { left: "28%", top: "54%" },
+    position: { left: "48.5%", top: "48.5%" },
     image: {
       src: "/map-nodes/busdepot.png",
       alt: "Bus Depot",
@@ -248,7 +251,7 @@ export const MAP_NODE_DEFINITIONS: Record<MapNodeKey, MapNodeDefinition> = {
     label: "Government Office",
     description:
       "Marshall tries to settle the dispute as reinstatement, union conflict, and public order collide.",
-    position: { left: "40%", top: "50%" },
+    position: { left: "49.4%", top: "36.6%" },
     image: {
       src: "/map-nodes/governmentoffice.png",
       alt: "Government Office",
@@ -260,7 +263,7 @@ export const MAP_NODE_DEFINITIONS: Record<MapNodeKey, MapNodeDefinition> = {
     label: "Command Center",
     description:
       "On 12 May, officials scramble as water hoses, thrown bricks, and casualty reports overtake the strike.",
-    position: { left: "33%", top: "58%" },
+    position: { left: "50.2%", top: "47.5%" },
     image: {
       src: "/map-nodes/commandcentre.png",
       alt: "Command Center",
@@ -272,7 +275,7 @@ export const MAP_NODE_DEFINITIONS: Record<MapNodeKey, MapNodeDefinition> = {
     label: "Alexandra Road",
     description:
       "What began at the depot erupts into deadly clashes on Alexandra Road.",
-    position: { left: "32%", top: "62%" },
+    position: { left: "42.8%", top: "56.7%" },
     image: {
       src: "/map-nodes/alexandraroad.png",
       alt: "Alexandra Road",
@@ -284,7 +287,7 @@ export const MAP_NODE_DEFINITIONS: Record<MapNodeKey, MapNodeDefinition> = {
     label: "Hospital",
     description:
       "Hospital wards make the riot's injuries impossible to treat as abstractions.",
-    position: { left: "46%", top: "35%" },
+    position: { left: "54.2%", top: "38.5%" },
     image: {
       src: "/map-nodes/hospital.png",
       alt: "Hospital",
@@ -296,7 +299,7 @@ export const MAP_NODE_DEFINITIONS: Record<MapNodeKey, MapNodeDefinition> = {
     label: "Negotiation Hall",
     description:
       "On 14 May, talks return because the city cannot absorb more bloodshed.",
-    position: { left: "46%", top: "48%" },
+    position: { left: "50.5%", top: "37.2%" },
     image: {
       src: "/map-nodes/negotiationhall.png",
       alt: "Negotiation Hall",
@@ -308,7 +311,7 @@ export const MAP_NODE_DEFINITIONS: Record<MapNodeKey, MapNodeDefinition> = {
     label: "Funeral",
     description:
       "Deaths from the riot turn mourning into a public argument about blame and memory.",
-    position: { left: "32%", top: "34%" },
+    position: { left: "60.4%", top: "36.8%" },
     image: {
       src: "/map-nodes/funeral.png",
       alt: "Funeral",
@@ -320,7 +323,7 @@ export const MAP_NODE_DEFINITIONS: Record<MapNodeKey, MapNodeDefinition> = {
     label: "Airport",
     description:
       "British doubts after Hock Lee shadow Marshall's 1956 Merdeka mission.",
-    position: { left: "52%", top: "62%" },
+    position: { left: "57.5%", top: "73.5%" },
     image: {
       src: "/map-nodes/kallangairport.png",
       alt: "Kallang Airport",
@@ -332,7 +335,7 @@ export const MAP_NODE_DEFINITIONS: Record<MapNodeKey, MapNodeDefinition> = {
     label: "Classroom",
     description:
       "Election news and worker politics pull Chinese-middle-school students toward the Hock Lee dispute.",
-    position: { left: "11.5%", top: "46.2%" },
+    position: { left: "31.3%", top: "45.4%" },
     image: {
       src: "/map-nodes/schoolbuilding.png",
       alt: "Classroom",
@@ -344,7 +347,7 @@ export const MAP_NODE_DEFINITIONS: Record<MapNodeKey, MapNodeDefinition> = {
     label: "School Lake",
     description:
       "Students organize food, songs, and numbers to show the depot workers they are not alone.",
-    position: { left: "14.7%", top: "53.5%" },
+    position: { left: "37.9%", top: "39.7%" },
     image: {
       src: "/map-nodes/schoollake.png",
       alt: "School Lake",
@@ -356,7 +359,7 @@ export const MAP_NODE_DEFINITIONS: Record<MapNodeKey, MapNodeDefinition> = {
     label: "School Gates",
     description:
       "School reopens under warnings, tighter discipline, and growing suspicion toward student politics.",
-    position: { left: "17.8%", top: "45.7%" },
+    position: { left: "49.7%", top: "35.8%" },
     image: {
       src: "/map-nodes/schoolgate.png",
       alt: "School Gates",

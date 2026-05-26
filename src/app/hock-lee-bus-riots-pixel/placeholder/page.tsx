@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { DispositionRadarPanel } from "../disposition-radar-panel";
 import { GameMenuOverlay } from "../game-menu-overlay";
 import { SceneCameraButton, SceneTitleWithCamera } from "../scene-title-with-camera";
 
@@ -223,7 +222,8 @@ export default function Scene2Storehall() {
         )}`;
     }, [direction, isWalking, walkFrame]);
     const sceneTitle = "Placeholder";
-    const sceneSubtitle = "This storeroom holds party records, campaign materials, and election-related documents during a period of internal tension. The space reflects ongoing administrative strain as political disagreements are recorded...but not resolved.";
+    const sceneSubtitle =
+        "This storeroom holds party records, campaign materials, and election-related documents during a period of internal tension. The space reflects ongoing administrative strain as political disagreements are recorded...but not resolved.";
     // const artifacts = useMemo(
     //   () => [
     //     {
@@ -853,11 +853,14 @@ export default function Scene2Storehall() {
                     <div className="pixel-corners--wrapper">
                         <div className="pixel-corners scene-subtitle">{sceneSubtitle}</div>
                     </div>
-                    <div className="mt-2" data-ui="true">
-                        <SceneCameraButton />
-                    </div>
                 </div>
             </aside>
+            <div
+                className="scene-camera-controls z-10"
+                data-ui="true"
+            >
+                <SceneCameraButton />
+            </div>
             <div
                 className="moving-char-label absolute z-10 text-center text-2xl sm:text-3xl character-drop-in"
                 style={{
@@ -1128,18 +1131,12 @@ export default function Scene2Storehall() {
                 </div>
             ) : null}
             <div
-                className="absolute bottom-6 right-6 z-10 inventory-rise-in"
-                data-ui="true"
-            >
-                <DispositionRadarPanel />
-            </div>
-            <div
-                className="absolute bottom-6 left-6 z-10 flex gap-3 hud-rise-in"
+                className="scene-menu-help-controls z-10 hud-rise-in"
                 data-ui="true"
             >
                 <button
                     type="button"
-                    className="hud-button pixel-corners"
+                    className="hud-button hud-button--menu pixel-corners"
                     aria-label="Menu"
                     onClick={() => setIsMenuOpen(true)}
                 >

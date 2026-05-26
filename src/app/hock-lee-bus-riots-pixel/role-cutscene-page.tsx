@@ -216,11 +216,11 @@ function RoleCutsceneShell({
         style={{ backgroundImage: "url('/background/hockleescenes/cutscene.png')" }}
       />
 
-      <div className="absolute bottom-10 left-10 z-20 flex gap-3">
-        <div className="ui-button-shell pixel-corners--wrapper">
+      <div className="scene-menu-help-controls z-20">
+        <div className="ui-button-shell ui-button-shell--menu pixel-corners--wrapper">
           <button
             type="button"
-            className="ui-button pixel-corners"
+            className="ui-button ui-button--menu pixel-corners"
             aria-label="Menu"
             onClick={() => {
               setIsHelpOpen(false);

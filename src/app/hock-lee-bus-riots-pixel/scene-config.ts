@@ -3,6 +3,7 @@ import type {
   SceneAnimatedElement,
   SceneArtifact,
   SceneNpcFigure,
+  SceneSideQuest,
 } from "./base-scene-shell";
 import type { CharacterCode } from "./scenes";
 import {
@@ -30,6 +31,10 @@ import {
   STUDENT_ESCALATION_CUTSCENE_ROUTE,
   STUDENT_SUPPORT_CUTSCENE_ROUTE,
 } from "./story-paths";
+import {
+  STUDENT_HUNGRY_BUS_WORKERS_ACTIONS,
+  STUDENT_HUNGRY_BUS_WORKERS_SIDE_QUEST_ID,
+} from "./sidequest-state";
 
 const buildSiblingWalkingFrames = (
   folder: "Left to Right" | "Right to Left",
@@ -301,7 +306,7 @@ const CITY_HALL_FIRST_STEP_ONBOARDING: NonNullable<BaseSceneConfig["onboarding"]
       id: "city-hall-disposition-radar",
       text: "Wondering what this is?",
       description:
-        "This spider chart starts balanced, then shifts as you talk to people and inspect objects. Bigger edges mean stronger Empathy, Courage, Curiosity, Tenacity, or Optimism. Click the chart to continue.",
+        "These bars start balanced, then shift as you talk to people and inspect objects. Longer bars mean stronger Awareness, Curiosity, or Empathy. Click the bars to continue.",
       target: {
         type: "disposition-radar",
       },
@@ -407,6 +412,28 @@ const NEGOTIATION_BW_NPC_OVERRIDES: Record<string, Partial<SceneNpcFigure>> = {
 };
 const MARKET_CS_ENTRY_CHAT: NonNullable<BaseSceneConfig["characterEntryChat"]> = {
   text: "I should get the fish before I head home. Everyone at school seems to be talking about Hock Lee now.",
+};
+const MARKET_CS_NPC_OVERRIDES: Record<string, Partial<SceneNpcFigure>> = {
+  "market-food-seller-east": {
+    chatBubbleTexts: [
+      "Customers complain my noodles cost more now, but charcoal, oil, and ingredients all cost more too.",
+    ],
+    chatBubbleActions: [
+      {
+        label: "Fill Tingkat",
+        sideQuestId: STUDENT_HUNGRY_BUS_WORKERS_SIDE_QUEST_ID,
+        actionId: STUDENT_HUNGRY_BUS_WORKERS_ACTIONS.getFood,
+        requiredCompletedActionIds: [
+          STUDENT_HUNGRY_BUS_WORKERS_ACTIONS.findTingkat,
+        ],
+        availableText:
+          "You found a tingkat for the depot? Give it here. I can pack rice, vegetables, and something warm for the men.",
+        completedText:
+          "The tingkat is packed. Take it back to the bus worker before the food cools.",
+        openQuestAfterComplete: true,
+      },
+    ],
+  },
 };
 const SCHOOL_LAKE_SIBLING_NPC_ID = "school-lake-sibling";
 const SCHOOL_LAKE_REPLACED_NPC_ID = "school-lake-student-6";
@@ -679,6 +706,89 @@ const BUS_DEPOT_CS_STUDENT_SUPPORT_NPCS: SceneNpcFigure[] = [
     zIndex: 12,
   },
 ];
+
+const BUS_DEPOT_CS_HUNGRY_WORKER_SIDE_QUEST_ID =
+  STUDENT_HUNGRY_BUS_WORKERS_SIDE_QUEST_ID;
+
+const BUS_DEPOT_CS_HUNGRY_WORKER_NPC: SceneNpcFigure = {
+  id: "bus-depot-cs-hungry-worker",
+  image: "/npcfigures/busdepotworker2/Bus Worker02_South.webp",
+  alt: "Hungry bus worker waiting near the blocked depot gates",
+  chatBubbleSpeaker: "Bus Worker",
+  chatBubbleTexts: [
+    "We've been here for a while, and some of the men have missed more than one meal. We could use some food if anyone can help.",
+  ],
+  chatBubbleActions: [
+    {
+      label: "Give Food",
+      sideQuestId: BUS_DEPOT_CS_HUNGRY_WORKER_SIDE_QUEST_ID,
+      actionId: STUDENT_HUNGRY_BUS_WORKERS_ACTIONS.deliverFood,
+      requiredCompletedActionIds: [STUDENT_HUNGRY_BUS_WORKERS_ACTIONS.getFood],
+      availableText:
+        "You came back with food? Pass it here. The men have been waiting, and this will help more than you know.",
+      completedText:
+        "The food helped steady the men at the depot. Thank you for coming back.",
+      openQuestAfterComplete: true,
+    },
+    {
+      label: "Help Out",
+      sideQuestId: BUS_DEPOT_CS_HUNGRY_WORKER_SIDE_QUEST_ID,
+      hideWhenAccepted: true,
+    },
+  ],
+  position: {
+    left: "31%",
+    top: "70%",
+    width: "132px",
+    transform: "translateY(-200px) scale(0.82)",
+  },
+  zIndex: 18,
+};
+
+const BUS_DEPOT_CS_HUNGRY_WORKER_SIDE_QUEST: SceneSideQuest = {
+  id: BUS_DEPOT_CS_HUNGRY_WORKER_SIDE_QUEST_ID,
+  title: "Hungry Bus Workers!",
+  typeLabel: "Side Quest",
+  iconSrc: "/icons/quest.png",
+  iconAlt: "Quest scroll",
+  previewImage: "/sidequestbanners/student_hungrybusworkers.png",
+  previewAlt: "Bus depot standoff",
+  previewNpcImage: "/npcfigures/busdepotworker2/Bus Worker02_South.webp",
+  previewNpcAlt: "Hungry bus worker",
+  previewCardTitle: "Bus Workers",
+  previewCardImage: "/artifacts/hockleebusriots/objects/Bus Driver_Home_ Tingkat.png",
+  previewCardImageAlt: "Food packed in a tingkat carrier",
+  description:
+    "Bus workers have been waiting at the depot for hours. Help a bus worker get food using a tingkat.",
+  actions: [
+    {
+      id: STUDENT_HUNGRY_BUS_WORKERS_ACTIONS.findTingkat,
+      label: "Find tingkat.",
+      iconSrc: "/artifacts/hockleebusriots/objects/Bus Driver_Home_ Tingkat.png",
+      iconAlt: "Tingkat carrier",
+    },
+    {
+      id: STUDENT_HUNGRY_BUS_WORKERS_ACTIONS.getFood,
+      label: "Get food from Mdm Lee.",
+      iconSrc: "/npcfigures/marketfoodseller/Food Seller_South.webp",
+      iconAlt: "Mdm Lee",
+    },
+    {
+      id: STUDENT_HUNGRY_BUS_WORKERS_ACTIONS.deliverFood,
+      label: "Deliver the food to the bus worker.",
+      iconSrc: "/npcfigures/busdepotworker2/Bus Worker02_South.webp",
+      iconAlt: "Bus worker",
+    },
+  ],
+  laterLabel: "Later",
+  acceptLabel: "Take it",
+};
+
+const withBusDepotStudentSideQuest = (npcFigures: SceneNpcFigure[]) => [
+  BUS_DEPOT_CS_HUNGRY_WORKER_NPC,
+  ...prependBusDepotStudentSupport(npcFigures),
+];
+
 const MARKET_CHARACTER_INITIAL_Y_RATIO = 0.7;
 const CIV_SCENE_POSITION_OVERRIDES: Partial<Record<string, Partial<BaseSceneConfig>>> = {
   [MARKET_ROUTE]: {
@@ -788,6 +898,7 @@ const getRoleSpecificSceneContent = (
   }
 
   if (pathname === MARKET_ROUTE && role === "CS") {
+    npcFigures = applyNpcOverrides(npcFigures, MARKET_CS_NPC_OVERRIDES);
     configOverrides = {
       ...configOverrides,
       characterEntryChat: MARKET_CS_ENTRY_CHAT,
@@ -852,15 +963,16 @@ const getRoleSpecificSceneContent = (
       npcFigures ??
       [];
 
-    npcFigures = prependBusDepotStudentSupport(busDepotPoliceStageNpcFigures);
+    npcFigures = withBusDepotStudentSideQuest(busDepotPoliceStageNpcFigures);
     configOverrides = {
       ...configOverrides,
       characterInitialXRatio: 0.26,
+      sideQuests: [BUS_DEPOT_CS_HUNGRY_WORKER_SIDE_QUEST],
       npcTransitions: baseConfig.npcTransitions?.map((transition) =>
         transition.triggerNpcId === BUS_DEPOT_CS_POLICE_STAGE_TRIGGER_NPC_ID
           ? {
               ...transition,
-              nextNpcFigures: prependBusDepotStudentSupport(transition.nextNpcFigures),
+              nextNpcFigures: withBusDepotStudentSideQuest(transition.nextNpcFigures),
             }
           : transition
       ),
@@ -986,6 +1098,7 @@ export const resolveSceneConfigForRole = (
     sceneSubtitle: step?.sceneSubtitle ?? baseConfig.sceneSubtitle,
     characterName: presentation.playerName,
     characterAlt: presentation.playerAlt,
+    characterDialoguePortraitSprite: presentation.dialoguePortraitSprite,
     characterSpriteBasePath:
       presentation.characterSpriteBasePath ?? baseConfig.characterSpriteBasePath,
     characterSprites: presentation.characterSprites ?? baseConfig.characterSprites,
