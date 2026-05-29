@@ -14,7 +14,7 @@ import {
     getUnlockedThroughIndex,
     parseVisitedProgress,
 } from "./map-progression";
-import type { CharacterCode } from "./scenes";
+import { CHARACTER_LABELS, type CharacterCode } from "./scenes";
 import {
     buildArtifactInteractionKey,
     buildNpcInteractionKey,
@@ -31,8 +31,10 @@ import {
 } from "./merlion-checkpoints";
 import { SceneCameraButton, SceneTitleWithCamera } from "./scene-title-with-camera";
 import { getStoryStepByRoute } from "./story-data";
+import { QuestMenuLightbox, SideQuestLightbox } from "./sidequest-lightboxes";
 import {
     GLOBAL_SIDE_QUESTS,
+    STUDENT_HUNGRY_BUS_WORKERS_ACTIONS,
     STUDENT_HUNGRY_BUS_WORKERS_SIDE_QUEST_ID,
     acceptSideQuest,
     completeSideQuestAction,
@@ -75,6 +77,20 @@ const DIALOGUE_BUBBLE_WIDTH = "var(--hl-dialogue-bubble-width)";
 const CHARACTER_ENTRY_CHAT_DEFAULT_DELAY_MS = 2100;
 const CHARACTER_ENTRY_CHAT_DEFAULT_DURATION_MS = 3200;
 const ONBOARDING_COMPLETION_NOTICE_DURATION_MS = 6000;
+const MERLION_CHAT_EXIT_ANIMATION_MS = 260;
+
+const STUDENT_TINGKAT_FOLDER = "ongkimchuan ";
+const STUDENT_TINGKAT_IDLE_SPRITE = `/character-figures/${encodeURIComponent(
+    STUDENT_TINGKAT_FOLDER
+)}/tingkat/${encodeURIComponent("CS with tingkat.webp")}`;
+const STUDENT_TINGKAT_WALKING_FRAMES = Array.from({ length: 8 }, (_, index) => {
+    const frame = String(index + 1).padStart(4, "0");
+    return `/character-figures/${encodeURIComponent(
+        STUDENT_TINGKAT_FOLDER
+    )}/tingkat/${encodeURIComponent("CS with tingkat walking")}/${encodeURIComponent(
+        `CS with Tingkat walking_${frame}.webp`
+    )}`;
+});
 const DEFAULT_CHARACTER_INITIAL_Y_RATIO = 0.66;
 const LEGACY_CHARACTER_INITIAL_Y_RATIO = 0.55;
 const MIN_DERIVED_CHARACTER_INITIAL_Y_RATIO = DEFAULT_CHARACTER_INITIAL_Y_RATIO;
@@ -358,6 +374,90 @@ type ArtifactDrawerChatMessage = {
     id: string;
     sender: "user";
     text: string;
+};
+
+type MerlionChatMessage = {
+    id: string;
+    sender: "merlion" | "user";
+    text: string;
+};
+
+const MERLION_CHAT_PROMPTS = [
+    "About the Story",
+    "About Game Play",
+    "Ask for a Hint",
+] as const;
+
+const MERLION_PROMPT_QUESTIONS: Record<(typeof MERLION_CHAT_PROMPTS)[number], string> = {
+    "About the Story": "Tell me about the story in this scene.",
+    "About Game Play": "How should I play this scene?",
+    "Ask for a Hint": "Can I have a hint?",
+};
+
+const buildMerlionQuestionReply = ({
+    question,
+    sceneLocationLabel,
+    sceneTitle,
+    hasSceneArtifactInteractions,
+    hasSceneNpcInteractions,
+    hasInteractedWithSceneArtifact,
+    hasInteractedWithSceneNpc,
+}: {
+    question: string;
+    sceneLocationLabel: string;
+    sceneTitle: string;
+    hasSceneArtifactInteractions: boolean;
+    hasSceneNpcInteractions: boolean;
+    hasInteractedWithSceneArtifact: boolean;
+    hasInteractedWithSceneNpc: boolean;
+}) => {
+    const normalizedQuestion = question.toLowerCase();
+    const locationLabel = sceneLocationLabel || sceneTitle;
+
+    if (
+        normalizedQuestion.includes("hint") ||
+        normalizedQuestion.includes("stuck") ||
+        normalizedQuestion.includes("what should")
+    ) {
+        if (hasSceneNpcInteractions && !hasInteractedWithSceneNpc) {
+            return `Hint: talk to someone at ${locationLabel}. Their perspective can reveal what people are worried about and what choices matter next.`;
+        }
+
+        if (hasSceneArtifactInteractions && !hasInteractedWithSceneArtifact) {
+            return `Hint: inspect an artefact at ${locationLabel}. Artefacts give clues about daily life, politics, and the pressures behind the Hock Lee Bus Riots.`;
+        }
+
+        return `Hint: you have checked the key interactions here. Use the camera for the real-world reference, or open the map when you are ready to continue.`;
+    }
+
+    if (
+        normalizedQuestion.includes("game") ||
+        normalizedQuestion.includes("play") ||
+        normalizedQuestion.includes("control") ||
+        normalizedQuestion.includes("move") ||
+        normalizedQuestion.includes("map")
+    ) {
+        return `Click around ${locationLabel} to move, speak to highlighted characters, inspect artefacts, and use the camera icon to compare the game scene with historical references.`;
+    }
+
+    if (
+        normalizedQuestion.includes("story") ||
+        normalizedQuestion.includes("history") ||
+        normalizedQuestion.includes("riot") ||
+        normalizedQuestion.includes("hock lee")
+    ) {
+        return `${locationLabel} is one part of the Hock Lee Bus Riots timeline. Pay attention to who has power, who feels ignored, and how each group explains the conflict.`;
+    }
+
+    if (
+        normalizedQuestion.includes("artefact") ||
+        normalizedQuestion.includes("artifact") ||
+        normalizedQuestion.includes("object")
+    ) {
+        return `Artefacts in ${locationLabel} connect the scene to real evidence from 1950s Singapore. Open them to learn what the objects reveal about the people and events around you.`;
+    }
+
+    return `Good question. In ${locationLabel}, look for what people say, what objects reveal, and how your character's point of view shapes the same historical event.`;
 };
 
 export type SceneAudioCue = {
@@ -870,6 +970,7 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
     const [drawerFocus, setDrawerFocus] = useState<"close">("close");
     const [activeNpcId, setActiveNpcId] = useState<string | null>(null);
     const [activeSideQuestId, setActiveSideQuestId] = useState<string | null>(null);
+    const [isQuestMenuOpen, setIsQuestMenuOpen] = useState(false);
     const acceptedSideQuestIds = useAcceptedSideQuestIds();
     const completedSideQuestActions = useCompletedSideQuestActions();
     const [sceneNpcFigures, setSceneNpcFigures] = useState<SceneNpcFigure[]>(initialNpcFigures);
@@ -912,10 +1013,15 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
     const [isRouteLoading, setIsRouteLoading] = useState(false);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isMerlionChatOpen, setIsMerlionChatOpen] = useState(false);
+    const [isMerlionChatClosing, setIsMerlionChatClosing] = useState(false);
     const [merlionCheckpointMessage, setMerlionCheckpointMessage] = useState<string | null>(
         null
     );
     const [idleMerlionMessage, setIdleMerlionMessage] = useState<string | null>(null);
+    const [merlionChatInput, setMerlionChatInput] = useState("");
+    const [merlionChatMessages, setMerlionChatMessages] = useState<MerlionChatMessage[]>(
+        []
+    );
     const [hasInteractedWithSceneArtifact, setHasInteractedWithSceneArtifact] =
         useState(false);
     const [hasInteractedWithSceneNpc, setHasInteractedWithSceneNpc] = useState(false);
@@ -941,6 +1047,8 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
     const isMenuOpenRef = useRef(false);
     const drawerFocusRef = useRef<"close">("close");
     const artifactChatScrollRef = useRef<HTMLDivElement | null>(null);
+    const merlionChatScrollRef = useRef<HTMLDivElement | null>(null);
+    const merlionChatCloseTimeoutRef = useRef<number | null>(null);
     const npcDialogueReplyTimeoutByIdRef = useRef<Record<string, number>>({});
     const ambientAudioRef = useRef<HTMLAudioElement | null>(null);
     const interactionAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -1017,6 +1125,7 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
         config.characterSpriteBasePath ?? "/character-figures/rajivmenon";
     const characterSprites = config.characterSprites;
     const selectedCharacterCode = config.selectedCharacterCode ?? "BW";
+    const merlionPlayerName = CHARACTER_LABELS[selectedCharacterCode] ?? characterName;
     const mapRoute = config.mapRoute ?? "/hock-lee-bus-riots-pixel/map";
     const mapLabel = config.mapLabel ?? "MAP";
     const showCompanionAvatar = config.showCompanionAvatar ?? false;
@@ -1087,6 +1196,75 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
             : getMerlionSceneDefaultMessage(sceneLocationLabel);
     const merlionChatMessage =
         idleMerlionMessage ?? merlionCheckpointMessage ?? sceneMerlionDefaultMessage;
+    const isMerlionChatVisible = isMerlionChatOpen || isMerlionChatClosing;
+    const scrollMerlionChatToBottom = useCallback(() => {
+        const scrollElement = merlionChatScrollRef.current;
+        if (!scrollElement) return;
+        scrollElement.scrollTop = scrollElement.scrollHeight;
+    }, []);
+    const openMerlionChatPanel = useCallback(() => {
+        if (merlionChatCloseTimeoutRef.current !== null) {
+            window.clearTimeout(merlionChatCloseTimeoutRef.current);
+            merlionChatCloseTimeoutRef.current = null;
+        }
+        setIsMerlionChatClosing(false);
+        setIsMerlionChatOpen(true);
+    }, []);
+    const closeMerlionChatPanel = useCallback(() => {
+        if (merlionChatCloseTimeoutRef.current !== null) {
+            window.clearTimeout(merlionChatCloseTimeoutRef.current);
+        }
+        setIsMerlionChatClosing(true);
+        merlionChatCloseTimeoutRef.current = window.setTimeout(() => {
+            setIsMerlionChatOpen(false);
+            setIsMerlionChatClosing(false);
+            merlionChatCloseTimeoutRef.current = null;
+        }, MERLION_CHAT_EXIT_ANIMATION_MS);
+    }, []);
+    const sendMerlionChatMessage = useCallback(
+        (presetQuestion?: string) => {
+            const text = (presetQuestion ?? merlionChatInput).trim();
+            if (!text) return;
+
+            const timestamp = Date.now();
+            const reply = buildMerlionQuestionReply({
+                question: text,
+                sceneLocationLabel,
+                sceneTitle,
+                hasSceneArtifactInteractions,
+                hasSceneNpcInteractions,
+                hasInteractedWithSceneArtifact,
+                hasInteractedWithSceneNpc,
+            });
+
+            setMerlionChatMessages((prev) => [
+                ...prev,
+                {
+                    id: `${timestamp}-user`,
+                    sender: "user",
+                    text,
+                },
+                {
+                    id: `${timestamp}-merlion`,
+                    sender: "merlion",
+                    text: reply,
+                },
+            ]);
+            setMerlionChatInput("");
+
+            window.requestAnimationFrame(scrollMerlionChatToBottom);
+        },
+        [
+            hasInteractedWithSceneArtifact,
+            hasInteractedWithSceneNpc,
+            hasSceneArtifactInteractions,
+            hasSceneNpcInteractions,
+            merlionChatInput,
+            sceneLocationLabel,
+            sceneTitle,
+            scrollMerlionChatToBottom,
+        ]
+    );
     const showOnboardingOverlay = isIntroGuideOpen && Boolean(currentOnboardingCallout);
     const onboardingStepCount = onboardingCallouts.length;
     const onboardingStepNumber =
@@ -1101,10 +1279,17 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
         return () => window.clearTimeout(timeoutId);
     }, [showOnboardingCompletionNotice]);
     useEffect(() => {
-        if (sceneNodeKey === "city-hall") {
-            setIsMerlionChatOpen(true);
-        }
-    }, [sceneNodeKey]);
+        return () => {
+            if (merlionChatCloseTimeoutRef.current !== null) {
+                window.clearTimeout(merlionChatCloseTimeoutRef.current);
+            }
+        };
+    }, []);
+    useEffect(() => {
+        if (!isMerlionChatVisible) return;
+        if (merlionChatMessages.length === 0) return;
+        window.requestAnimationFrame(scrollMerlionChatToBottom);
+    }, [isMerlionChatVisible, merlionChatMessages.length, scrollMerlionChatToBottom]);
     useEffect(() => {
         if (typeof window === "undefined") return;
 
@@ -1118,7 +1303,7 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
             setIdleMerlionMessage(null);
             idleTimeoutId = window.setTimeout(() => {
                 setIdleMerlionMessage(MERLION_IDLE_HELP_MESSAGE);
-                setIsMerlionChatOpen(true);
+                openMerlionChatPanel();
             }, 5 * 60 * 1000);
         };
 
@@ -1135,7 +1320,7 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
                 window.removeEventListener(eventName, resetIdleTimer);
             });
         };
-    }, []);
+    }, [openMerlionChatPanel]);
     const isWalking =
         isAutoWalking || pressed.up || pressed.down || pressed.left || pressed.right;
     const clampCharacterX = useCallback(
@@ -1176,6 +1361,16 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
         position.y - CHARACTER_SIZE * (renderedCharacterScale - 1);
     const characterLabelTop =
         characterVisualTop + PLAYER_CHARACTER_LABEL_VERTICAL_OFFSET;
+    const studentTingkatCompletedActionIds =
+        completedSideQuestActions[STUDENT_HUNGRY_BUS_WORKERS_SIDE_QUEST_ID] ?? [];
+    const isCarryingTingkat =
+        selectedCharacterCode === "CS" &&
+        studentTingkatCompletedActionIds.includes(
+            STUDENT_HUNGRY_BUS_WORKERS_ACTIONS.findTingkat
+        ) &&
+        !studentTingkatCompletedActionIds.includes(
+            STUDENT_HUNGRY_BUS_WORKERS_ACTIONS.deliverFood
+        );
     const spriteSrc = useMemo(() => {
         const cardinalDirection =
             direction === "north" || direction === "north-east" || direction === "north-west"
@@ -1187,6 +1382,21 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
                     : direction === "east"
                         ? "east"
                         : "west";
+
+        if (isCarryingTingkat) {
+            if (isWalking && cardinalDirection === "east" && characterSprites) {
+                const eastWalkingFrames = characterSprites.walking?.east;
+                if (eastWalkingFrames && eastWalkingFrames.length > 0) {
+                    return eastWalkingFrames[walkFrame % eastWalkingFrames.length];
+                }
+            }
+            if (isWalking && STUDENT_TINGKAT_WALKING_FRAMES.length > 0) {
+                return STUDENT_TINGKAT_WALKING_FRAMES[
+                    walkFrame % STUDENT_TINGKAT_WALKING_FRAMES.length
+                ];
+            }
+            return STUDENT_TINGKAT_IDLE_SPRITE;
+        }
 
         if (characterSprites) {
             const walkingFrames = characterSprites.walking?.[cardinalDirection];
@@ -1212,7 +1422,14 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
         return `${characterSpriteBasePath}/walking/${folder}/${encodeURIComponent(
             file
         )}`;
-    }, [characterSpriteBasePath, characterSprites, direction, isWalking, walkFrame]);
+    }, [
+        characterSpriteBasePath,
+        characterSprites,
+        direction,
+        isCarryingTingkat,
+        isWalking,
+        walkFrame,
+    ]);
     const dialoguePortraitSpriteSrc = useMemo(() => {
         if (characterDialoguePortraitSprite) return characterDialoguePortraitSprite;
         if (!characterSprites) return `${characterSpriteBasePath}/south-west.png`;
@@ -1379,11 +1596,6 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
         : [];
     const isActiveSideQuestAccepted = activeSideQuest
         ? isSideQuestAccepted(activeSideQuest.id)
-        : false;
-    const isActiveSideQuestDone = activeSideQuest
-        ? activeSideQuest.actions.every((action) =>
-            activeSideQuestCompletedActionIds.includes(action.id)
-        )
         : false;
     const activeArtifactChatInput = artifactChatInputsById[activeArtifact.id] ?? "";
     const activeArtifactChatMessages = artifactChatMessagesById[activeArtifact.id] ?? [];
@@ -1901,7 +2113,7 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
 
         shownMapExitNudgesRef.current.add(nextNudge.key);
         setMerlionCheckpointMessage(nextNudge.message);
-        setIsMerlionChatOpen(true);
+        openMerlionChatPanel();
         return true;
     }, [
         acceptedSideQuestIds,
@@ -1912,6 +2124,7 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
         sceneLocationLabel,
         sceneNodeKey,
         selectedCharacterCode,
+        openMerlionChatPanel,
     ]);
     const walkToMapAndNavigate = () => {
         if (isRouteLoadingRef.current) return;
@@ -2808,44 +3021,127 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
                     <div className="pixel-corners--wrapper">
                         <div className="pixel-corners scene-subtitle">{sceneSubtitle}</div>
                     </div>
-                </div>
-                <div className="scene-panel-merlion" data-ui="true">
-                    <div className="hl-merlion-hud-anchor">
-                        {isMerlionChatOpen ? (
-                            <div
-                                id="scene-merlion-chat"
-                                className="hl-merlion-chat-bubble-shell"
-                                role="status"
-                            >
-                                <div className="hl-merlion-chat-bubble npc-chat-bubble pixel-corners">
-                                    <span className="npc-chat-text">
-                                        {merlionChatMessage}
-                                    </span>
-                                </div>
-                            </div>
-                        ) : null}
-                        <button
-                            type="button"
-                            className="hl-merlion-hud-button"
-                            aria-label="Talk to Merlion"
-                            aria-expanded={isMerlionChatOpen}
-                            aria-controls="scene-merlion-chat"
-                            onClick={(event) => {
-                                event.stopPropagation();
-                                setIsMerlionChatOpen((isOpen) => !isOpen);
-                            }}
-                            disabled={showOnboardingOverlay && !isOnboardingHudTarget("map")}
+                    {isMerlionChatVisible ? (
+                        <section
+                            id="scene-merlion-chat"
+                            className={`hl-merlion-chat-panel-frame double-one-step ${isMerlionChatClosing ? "hl-merlion-chat-panel-frame--closing" : ""}`}
+                            aria-label="Game Master Merlion chat"
+                            data-ui="true"
                         >
-                            <img
-                                src="/character-profile-pics/merlion.png"
-                                alt=""
-                                aria-hidden="true"
-                                className="hl-merlion-hud-icon"
-                                draggable={false}
-                            />
-                        </button>
-                    </div>
+                            <div className="hl-merlion-chat-panel one-step-border__content">
+                                <header className="hl-merlion-chat-panel__header">
+                                    <img
+                                        src="/character-profile-pics/merlion.png"
+                                        alt=""
+                                        aria-hidden="true"
+                                        className="hl-merlion-chat-panel__avatar"
+                                        draggable={false}
+                                    />
+                                    <div className="hl-merlion-chat-panel__title">
+                                        Game Master Merlion
+                                    </div>
+                                    <button
+                                        type="button"
+                                        className="hl-merlion-chat-panel__close"
+                                        aria-label="Close Game Master Merlion chat"
+                                        onClick={(event) => {
+                                            event.stopPropagation();
+                                            closeMerlionChatPanel();
+                                        }}
+                                    >
+                                        ×
+                                    </button>
+                                </header>
+                                <div className="hl-merlion-chat-panel__rule" />
+                                <div
+                                    className="hl-merlion-chat-panel__messages"
+                                    ref={merlionChatScrollRef}
+                                    aria-live="polite"
+                                >
+                                    <div className="hl-merlion-chat-panel__intro">
+                                        <p>
+                                            Hello, {merlionPlayerName}. I&apos;m Game Master
+                                            Merlion. I&apos;m here to guide you through
+                                            Singapore&apos;s past, answer your questions, and
+                                            help you understand the people, places, and events
+                                            you meet in the game.
+                                        </p>
+                                        <p>{merlionChatMessage}</p>
+                                    </div>
+                                    {merlionChatMessages.map((message) => (
+                                        <div
+                                            key={message.id}
+                                            className={`hl-merlion-chat-panel__bubble hl-merlion-chat-panel__bubble--${message.sender}`}
+                                        >
+                                            {message.text}
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="hl-merlion-chat-panel__prompts">
+                                    {MERLION_CHAT_PROMPTS.map((prompt) => (
+                                        <button
+                                            key={prompt}
+                                            type="button"
+                                            onClick={(event) => {
+                                                event.stopPropagation();
+                                                sendMerlionChatMessage(
+                                                    MERLION_PROMPT_QUESTIONS[prompt]
+                                                );
+                                            }}
+                                        >
+                                            {prompt}
+                                        </button>
+                                    ))}
+                                </div>
+                                <form
+                                    className="hl-merlion-chat-panel__composer"
+                                    onSubmit={(event) => {
+                                        event.preventDefault();
+                                        event.stopPropagation();
+                                        sendMerlionChatMessage();
+                                    }}
+                                >
+                                    <input
+                                        type="text"
+                                        value={merlionChatInput}
+                                        onChange={(event) => {
+                                            setMerlionChatInput(event.target.value);
+                                        }}
+                                        placeholder="Type a question to Game Master"
+                                        aria-label="Type a question to Game Master Merlion"
+                                    />
+                                    <button type="submit">Send</button>
+                                </form>
+                            </div>
+                        </section>
+                    ) : null}
                 </div>
+                {!isMerlionChatVisible ? (
+                    <div className="scene-panel-merlion" data-ui="true">
+                        <div className="hl-merlion-hud-anchor">
+                            <button
+                                type="button"
+                                className="hl-merlion-hud-button"
+                                aria-label="Talk to Merlion"
+                                aria-expanded={isMerlionChatVisible}
+                                aria-controls="scene-merlion-chat"
+                                onClick={(event) => {
+                                    event.stopPropagation();
+                                    openMerlionChatPanel();
+                                }}
+                                disabled={showOnboardingOverlay && !isOnboardingHudTarget("map")}
+                            >
+                                <img
+                                    src="/character-profile-pics/merlion.png"
+                                    alt=""
+                                    aria-hidden="true"
+                                    className="hl-merlion-hud-icon"
+                                    draggable={false}
+                                />
+                            </button>
+                        </div>
+                    </div>
+                ) : null}
                 {showCompanionAvatar ? (
                     <div className="mt-2" data-ui="true">
                         <img
@@ -3949,109 +4245,36 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
                     </div>
                 );
             })}
+            {isQuestMenuOpen ? (
+                <QuestMenuLightbox
+                    sideQuests={acceptedSideQuests}
+                    completedSideQuestActions={completedSideQuestActions}
+                    onClose={() => setIsQuestMenuOpen(false)}
+                    onQuestSelect={(sideQuestId) => {
+                        setIsQuestMenuOpen(false);
+                        setActiveSideQuestId(sideQuestId);
+                    }}
+                />
+            ) : null}
             {activeSideQuest ? (
-                <div
-                    className="sidequest-lightbox-overlay"
-                    role="dialog"
-                    aria-modal="true"
-                    aria-labelledby="sidequest-lightbox-title"
-                    data-ui="true"
-                >
-                    <div className="sidequest-lightbox-shell">
-                        <div className="sidequest-lightbox-frame double-one-step">
-                            <div className="sidequest-lightbox-panel one-step-border__content">
-                                <button
-                                    type="button"
-                                    className="sidequest-lightbox-close hl-pixel-close-button"
-                                    onClick={() => setActiveSideQuestId(null)}
-                                    aria-label="Close quest lightbox"
-                                >
-                                    ×
-                                </button>
-                                <div className="sidequest-lightbox-kicker">
-                                    {activeSideQuest.iconSrc ? (
-                                        <img
-                                            src={activeSideQuest.iconSrc}
-                                            alt={activeSideQuest.iconAlt ?? ""}
-                                            aria-hidden={activeSideQuest.iconAlt ? undefined : true}
-                                        />
-                                    ) : null}
-                                    <span>{activeSideQuest.typeLabel}</span>
-                                </div>
-                                <h2 id="sidequest-lightbox-title">{activeSideQuest.title}</h2>
-                                {isActiveSideQuestDone ? (
-                                    <div className="sidequest-lightbox-done-banner">DONE</div>
-                                ) : null}
-                                {activeSideQuest.previewImage ? (
-                                    <div className="sidequest-lightbox-preview">
-                                        <img
-                                            src={activeSideQuest.previewImage}
-                                            alt={activeSideQuest.previewAlt ?? ""}
-                                            className="sidequest-lightbox-preview__background"
-                                        />
-                                        {activeSideQuest.previewNpcImage ? (
-                                            <img
-                                                src={activeSideQuest.previewNpcImage}
-                                                alt={activeSideQuest.previewNpcAlt ?? ""}
-                                                className="sidequest-lightbox-preview__npc"
-                                            />
-                                        ) : null}
-                                    </div>
-                                ) : null}
-                                <p className="sidequest-lightbox-description">
-                                    {activeSideQuest.description}
-                                </p>
-                                <div className="sidequest-lightbox-actions-label">Actions</div>
-                                <ol className="sidequest-lightbox-actions">
-                                    {activeSideQuest.actions.map((action, index) => {
-                                        const isActionComplete =
-                                            activeSideQuestCompletedActionIds.includes(action.id);
-
-                                        return (
-                                        <li
-                                            key={action.id}
-                                            className={
-                                                isActionComplete
-                                                    ? "sidequest-lightbox-action--done"
-                                                    : undefined
-                                            }
-                                        >
-                                            <span className="sidequest-lightbox-action-number">
-                                                {isActionComplete ? "✓" : index + 1}
-                                            </span>
-                                            {action.iconSrc ? (
-                                                <img src={action.iconSrc} alt={action.iconAlt ?? ""} />
-                                            ) : null}
-                                            <span>{action.label}</span>
-                                        </li>
-                                        );
-                                    })}
-                                </ol>
-                            </div>
-                        </div>
-                        {!isActiveSideQuestAccepted ? (
-                            <div className="sidequest-lightbox-buttons">
-                            <button
-                                type="button"
-                                className="sidequest-lightbox-button sidequest-lightbox-button--later pixel-corners"
-                                onClick={() => setActiveSideQuestId(null)}
-                            >
-                                {activeSideQuest.laterLabel ?? "Later"}
-                            </button>
-                            <button
-                                type="button"
-                                className="sidequest-lightbox-button sidequest-lightbox-button--accept pixel-corners"
-                                onClick={() => {
-                                    acceptSideQuest(activeSideQuest.id);
-                                    setActiveSideQuestId(null);
-                                }}
-                            >
-                                {activeSideQuest.acceptLabel ?? "Take it"}
-                            </button>
-                        </div>
-                        ) : null}
-                    </div>
-                </div>
+                <SideQuestLightbox
+                    sideQuest={activeSideQuest}
+                    completedActionIds={activeSideQuestCompletedActionIds}
+                    isAccepted={isActiveSideQuestAccepted}
+                    onClose={() => setActiveSideQuestId(null)}
+                    onAccept={() => {
+                        acceptSideQuest(activeSideQuest.id);
+                        setActiveSideQuestId(null);
+                    }}
+                    onBack={
+                        isActiveSideQuestAccepted
+                            ? () => {
+                                  setActiveSideQuestId(null);
+                                  setIsQuestMenuOpen(true);
+                              }
+                            : undefined
+                    }
+                />
             ) : null}
             {isDrawerOpen && activeArtifact ? (
                 <div
@@ -4242,25 +4465,23 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
                     data-ui="true"
                 >
                     <div className="scene-sidequest-button-stack">
-                        {acceptedSideQuests.map((sideQuest) => (
-                            <button
-                                key={sideQuest.id}
-                                type="button"
-                                className="scene-sidequest-button"
-                                onClick={(event) => {
-                                    event.stopPropagation();
-                                    setActiveSideQuestId(sideQuest.id);
-                                }}
-                                aria-label={`Open quest: ${sideQuest.title}`}
-                            >
-                                <img
-                                    src="/icons/quest.png"
-                                    alt=""
-                                    aria-hidden="true"
-                                    draggable={false}
-                                />
-                            </button>
-                        ))}
+                        <button
+                            type="button"
+                            className="scene-sidequest-button"
+                            onClick={(event) => {
+                                event.stopPropagation();
+                                setActiveSideQuestId(null);
+                                setIsQuestMenuOpen(true);
+                            }}
+                            aria-label="Open quest menu"
+                        >
+                            <img
+                                src="/icons/quest.png"
+                                alt=""
+                                aria-hidden="true"
+                                draggable={false}
+                            />
+                        </button>
                     </div>
                 </div>
             ) : null}
@@ -4349,7 +4570,6 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
                                     if (completeOnboardingStep({ type: "map" })) return;
                                     return;
                                 }
-                                if (showMapExitNudgeIfNeeded()) return;
                                 walkToMapAndNavigate();
                             }}
                             disabled={

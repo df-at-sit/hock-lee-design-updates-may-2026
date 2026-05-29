@@ -33,6 +33,9 @@ import { INTRO_CUTSCENE_ROUTE, OUTRO_CUTSCENE_ROUTE } from "../story-paths";
 import { GameMenuOverlay } from "../game-menu-overlay";
 import { useSelectedCharacterCode } from "../use-selected-character-code";
 import { CharacterProfileCard } from "../character-profile-card";
+import { QuestMenuLightbox, SideQuestLightbox } from "../sidequest-lightboxes";
+import { MerlionChatPanel } from "../merlion-chat-panel";
+import { CHARACTER_LABELS } from "../scenes";
 import {
   MERLION_IDLE_HELP_MESSAGE,
   getMerlionMapCheckpointMessage,
@@ -43,6 +46,7 @@ import {
   SIDEQUEST_COMPLETED_ACTIONS_STORAGE_KEY,
   SIDEQUEST_PROGRESS_UPDATED_EVENT,
   useAcceptedSideQuestIds,
+  useCompletedSideQuestActions,
 } from "../sidequest-state";
 
 const MAP_NODE_IDLE_FILTER =
@@ -350,9 +354,42 @@ function RoleMapPage({ initialMapState, selectedCharacter }: RoleMapPageProps) {
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [masterMode, setMasterMode] = useState(false);
   const [isMerlionChatOpen, setIsMerlionChatOpen] = useState(false);
+  const [isMerlionChatClosing, setIsMerlionChatClosing] = useState(false);
+  const merlionChatCloseTimeoutRef = useRef<number | null>(null);
   const [idleMerlionMessage, setIdleMerlionMessage] = useState<string | null>(null);
+  const [isQuestMenuOpen, setIsQuestMenuOpen] = useState(false);
+  const [activeSideQuestId, setActiveSideQuestId] = useState<string | null>(null);
   const acceptedSideQuestIds = useAcceptedSideQuestIds();
+  const completedSideQuestActions = useCompletedSideQuestActions();
   const isRouteLoadingRef = useRef(false);
+  const barsSlotRef = useRef<HTMLDivElement | null>(null);
+  const [merlionLeftPx, setMerlionLeftPx] = useState<number | null>(null);
+  const [merlionHudTopPx, setMerlionHudTopPx] = useState<number | null>(null);
+
+  const MERLION_HUD_GAP_PX = 60;
+  const MERLION_CHAT_EXTRA_DOWN_PX = -24;
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const measure = () => {
+      const barsElement = barsSlotRef.current;
+      if (!barsElement) return;
+      const rect = barsElement.getBoundingClientRect();
+      setMerlionLeftPx(rect.left);
+      setMerlionHudTopPx(rect.bottom + MERLION_HUD_GAP_PX);
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    let observer: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== "undefined" && barsSlotRef.current) {
+      observer = new ResizeObserver(measure);
+      observer.observe(barsSlotRef.current);
+    }
+    return () => {
+      window.removeEventListener("resize", measure);
+      observer?.disconnect();
+    };
+  }, []);
 
   const navigateWithLoading = useCallback(
     (route: string) => {
@@ -423,6 +460,12 @@ function RoleMapPage({ initialMapState, selectedCharacter }: RoleMapPageProps) {
         : [],
     [acceptedSideQuestIds, selectedCharacter]
   );
+  const activeSideQuest = activeSideQuestId
+    ? acceptedSideQuests.find((sideQuest) => sideQuest.id === activeSideQuestId) ?? null
+    : null;
+  const activeSideQuestCompletedActionIds = activeSideQuest
+    ? completedSideQuestActions[activeSideQuest.id] ?? []
+    : [];
   const finalStepIndex = routeSteps.length - 1;
   const finalStepNodeKey = routeSteps[finalStepIndex]?.nodeKey ?? null;
   const hasReachedFinalScene = visitedProgress >= finalStepIndex;
@@ -536,6 +579,66 @@ function RoleMapPage({ initialMapState, selectedCharacter }: RoleMapPageProps) {
     ]
   );
   const merlionChatMessage = idleMerlionMessage ?? checkpointMerlionMessage;
+  const isMerlionChatVisible = isMerlionChatOpen || isMerlionChatClosing;
+  const merlionPlayerName =
+    CHARACTER_LABELS[selectedCharacter] ?? "traveller";
+  const openMerlionChatPanel = useCallback(() => {
+    if (merlionChatCloseTimeoutRef.current !== null) {
+      window.clearTimeout(merlionChatCloseTimeoutRef.current);
+      merlionChatCloseTimeoutRef.current = null;
+    }
+    setIsMerlionChatClosing(false);
+    setIsMerlionChatOpen(true);
+  }, []);
+  const closeMerlionChatPanel = useCallback(() => {
+    if (merlionChatCloseTimeoutRef.current !== null) {
+      window.clearTimeout(merlionChatCloseTimeoutRef.current);
+    }
+    setIsMerlionChatClosing(true);
+    merlionChatCloseTimeoutRef.current = window.setTimeout(() => {
+      setIsMerlionChatOpen(false);
+      setIsMerlionChatClosing(false);
+      merlionChatCloseTimeoutRef.current = null;
+    }, 260);
+  }, []);
+  useEffect(() => {
+    return () => {
+      if (merlionChatCloseTimeoutRef.current !== null) {
+        window.clearTimeout(merlionChatCloseTimeoutRef.current);
+      }
+    };
+  }, []);
+  const buildMerlionMapReply = useCallback(
+    (question: string) => {
+      const normalized = question.toLowerCase();
+      if (
+        normalized.includes("hint") ||
+        normalized.includes("stuck") ||
+        normalized.includes("what should")
+      ) {
+        return "Hint: pick an unlocked place on the map to revisit it, or jump to the highlighted stop on the timeline to continue the story.";
+      }
+      if (
+        normalized.includes("game") ||
+        normalized.includes("play") ||
+        normalized.includes("control") ||
+        normalized.includes("move") ||
+        normalized.includes("map")
+      ) {
+        return "Use the map to travel between places. Click an unlocked location or a timeline stop, then press Enter or click again to visit it. Arrow keys also move the marker.";
+      }
+      if (
+        normalized.includes("story") ||
+        normalized.includes("history") ||
+        normalized.includes("riot") ||
+        normalized.includes("hock lee")
+      ) {
+        return `${merlionPlayerName}, each stop on the map is a moment in the Hock Lee Bus Riots. Notice how the same events look different depending on who you stand beside.`;
+      }
+      return `Good question, ${merlionPlayerName}. From the map you can revisit any unlocked place to gather more clues before moving the story forward.`;
+    },
+    [merlionPlayerName]
+  );
 
   const handleActivateNode = useCallback(
     (node: ResolvedMapNode | null) => {
@@ -624,9 +727,9 @@ function RoleMapPage({ initialMapState, selectedCharacter }: RoleMapPageProps) {
 
   useEffect(() => {
     if (checkpointMerlionMessage) {
-      setIsMerlionChatOpen(true);
+      openMerlionChatPanel();
     }
-  }, [checkpointMerlionMessage]);
+  }, [checkpointMerlionMessage, openMerlionChatPanel]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -641,7 +744,7 @@ function RoleMapPage({ initialMapState, selectedCharacter }: RoleMapPageProps) {
       setIdleMerlionMessage(null);
       idleTimeoutId = window.setTimeout(() => {
         setIdleMerlionMessage(MERLION_IDLE_HELP_MESSAGE);
-        setIsMerlionChatOpen(true);
+        openMerlionChatPanel();
       }, 5 * 60 * 1000);
     };
 
@@ -658,7 +761,7 @@ function RoleMapPage({ initialMapState, selectedCharacter }: RoleMapPageProps) {
         window.removeEventListener(eventName, resetIdleTimer);
       });
     };
-  }, []);
+  }, [openMerlionChatPanel]);
 
   const renderResolvedNode = (node: ResolvedMapNode) => {
     const nodeDefinition = MAP_NODE_DEFINITIONS[node.key];
@@ -764,50 +867,70 @@ function RoleMapPage({ initialMapState, selectedCharacter }: RoleMapPageProps) {
       <aside className="scene-panel scene-panel-shell">
         <div className="scene-title-stack">
           <CharacterProfileCard characterCode={selectedCharacter} />
-          <div className="scene-profile-bars-slot">
+          <div className="scene-profile-bars-slot" ref={barsSlotRef}>
             <DispositionRadarPanel
               className="scene-radar-panel"
               selectedCharacterCode={selectedCharacter}
             />
           </div>
         </div>
-        <div className="scene-panel-merlion">
-          <div className="hl-merlion-hud-anchor">
-            {isMerlionChatOpen ? (
-              <div
-                id="map-merlion-chat"
-                className="hl-merlion-chat-bubble-shell"
-                role="status"
-              >
-                <div className="hl-merlion-chat-bubble npc-chat-bubble pixel-corners">
-                  <span className="npc-chat-text">
-                    {merlionChatMessage}
-                  </span>
-                </div>
-              </div>
-            ) : null}
-            <button
-              type="button"
-              className="hl-merlion-hud-button"
-              aria-label="Talk to Merlion"
-              aria-expanded={isMerlionChatOpen}
-              aria-controls="map-merlion-chat"
-              onClick={() => {
-                if (isRouteLoadingRef.current) return;
-                setIsMerlionChatOpen((isOpen) => !isOpen);
-              }}
-            >
-              <img
-                src="/character-profile-pics/merlion.png"
-                alt=""
-                aria-hidden="true"
-                className="hl-merlion-hud-icon"
-                draggable={false}
-              />
-            </button>
-          </div>
-        </div>
       </aside>
+
+      <div
+        className="map-merlion-hud-floating"
+        style={{
+          ...(merlionLeftPx !== null ? { left: `${merlionLeftPx}px` } : null),
+          ...(merlionHudTopPx !== null ? { top: `${merlionHudTopPx}px` } : null),
+          ...(isMerlionChatVisible ? { visibility: "hidden" as const } : null),
+        }}
+      >
+        <div className="hl-merlion-hud-anchor">
+          <button
+            type="button"
+            className="hl-merlion-hud-button"
+            aria-label="Talk to Merlion"
+            aria-expanded={isMerlionChatVisible}
+            aria-controls="map-merlion-chat"
+            onClick={() => {
+              if (isRouteLoadingRef.current) return;
+              if (isMerlionChatVisible) {
+                closeMerlionChatPanel();
+              } else {
+                openMerlionChatPanel();
+              }
+            }}
+          >
+            <img
+              src="/character-profile-pics/merlion.png"
+              alt=""
+              aria-hidden="true"
+              className="hl-merlion-hud-icon"
+              draggable={false}
+            />
+          </button>
+        </div>
+      </div>
+
+      {isMerlionChatVisible ? (
+        <div
+          className="map-merlion-chat-floating"
+          style={{
+            ...(merlionLeftPx !== null ? { left: `${merlionLeftPx}px` } : null),
+            ...(merlionHudTopPx !== null
+              ? { top: `${merlionHudTopPx + MERLION_CHAT_EXTRA_DOWN_PX}px` }
+              : null),
+          }}
+        >
+          <MerlionChatPanel
+            id="map-merlion-chat"
+            playerName={merlionPlayerName}
+            introMessage={merlionChatMessage}
+            isClosing={isMerlionChatClosing}
+            onClose={closeMerlionChatPanel}
+            buildReply={buildMerlionMapReply}
+          />
+        </div>
+      ) : null}
 
       <div className="scene-menu-help-controls z-20">
         <div className="ui-button-shell ui-button-shell--menu pixel-corners--wrapper">
@@ -838,21 +961,23 @@ function RoleMapPage({ initialMapState, selectedCharacter }: RoleMapPageProps) {
         </button>
         {acceptedSideQuests.length > 0 ? (
           <div className="scene-sidequest-button-stack scene-sidequest-button-stack--map">
-            {acceptedSideQuests.map((sideQuest) => (
-              <button
-                key={sideQuest.id}
-                type="button"
-                className="scene-sidequest-button"
-                aria-label={`Quest accepted: ${sideQuest.title}`}
-              >
-                <img
-                  src="/icons/quest.png"
-                  alt=""
-                  aria-hidden="true"
-                  draggable={false}
-                />
-              </button>
-            ))}
+            <button
+              type="button"
+              className="scene-sidequest-button"
+              onClick={() => {
+                if (isRouteLoadingRef.current) return;
+                setActiveSideQuestId(null);
+                setIsQuestMenuOpen(true);
+              }}
+              aria-label="Open quest menu"
+            >
+              <img
+                src="/icons/quest.png"
+                alt=""
+                aria-hidden="true"
+                draggable={false}
+              />
+            </button>
           </div>
         ) : null}
       </div>
@@ -968,30 +1093,34 @@ function RoleMapPage({ initialMapState, selectedCharacter }: RoleMapPageProps) {
         </div>
       </div>
 
-      <div className="scene-bg h-full w-full bg-cover bg-center bg-no-repeat hl-pixel-map-bg" />
+      <div className="hl-pixel-map-stage" aria-hidden="true">
+        <div className="scene-bg hl-pixel-map-bg" />
 
-      <div
-        className={`hl-pixel-map-route-layer ${mapRoute.className}`}
-        aria-hidden="true"
-      >
-        <svg
-          className="hl-pixel-map-route-svg"
-          width={mapRoute.width}
-          height={mapRoute.height}
-          viewBox={mapRoute.viewBox}
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-          preserveAspectRatio="none"
+        <div
+          className={`hl-pixel-map-route-layer ${mapRoute.className}`}
+          style={{ aspectRatio: `${mapRoute.width} / ${mapRoute.height}` }}
         >
-          <path
-            d={mapRoute.path}
-            stroke="#F9CB9D"
-            strokeWidth="4"
-            strokeDasharray="10 10"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
+          <svg
+            className="hl-pixel-map-route-svg"
+            viewBox={mapRoute.viewBox}
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            preserveAspectRatio="xMidYMid meet"
+          >
+            <path
+              d={mapRoute.path}
+              stroke="#F9CB9D"
+              strokeWidth="4"
+              strokeDasharray="10 10"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </div>
+
+        <div className="hl-pixel-map-node-layer pointer-events-none absolute inset-0 z-[8]">
+          {visibleNodes.map((node) => renderResolvedNode(node))}
+        </div>
       </div>
 
       {masterMode ? (
@@ -1003,15 +1132,32 @@ function RoleMapPage({ initialMapState, selectedCharacter }: RoleMapPageProps) {
         </div>
       ) : null}
 
-      <div className="hl-pixel-map-node-layer pointer-events-none absolute inset-0 z-[8]">
-        {visibleNodes.map((node) => renderResolvedNode(node))}
-      </div>
-
       <GameMenuOverlay
         isOpen={isMenuOpen}
         onClose={() => setIsMenuOpen(false)}
         onNavigate={handleMenuNavigation}
       />
+
+      {isQuestMenuOpen ? (
+        <QuestMenuLightbox
+          sideQuests={acceptedSideQuests}
+          completedSideQuestActions={completedSideQuestActions}
+          onClose={() => setIsQuestMenuOpen(false)}
+          onQuestSelect={(sideQuestId) => {
+            setIsQuestMenuOpen(false);
+            setActiveSideQuestId(sideQuestId);
+          }}
+        />
+      ) : null}
+
+      {activeSideQuest ? (
+        <SideQuestLightbox
+          sideQuest={activeSideQuest}
+          completedActionIds={activeSideQuestCompletedActionIds}
+          isAccepted
+          onClose={() => setActiveSideQuestId(null)}
+        />
+      ) : null}
 
       {isHelpOpen ? (
         <div

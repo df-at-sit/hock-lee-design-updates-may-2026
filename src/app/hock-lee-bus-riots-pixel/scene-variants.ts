@@ -3186,6 +3186,25 @@ const buildSceneSubtitle = (sceneNumber: number) => {
     .join(" ");
 };
 
+const DEFAULT_SCENE_BACKGROUNDS: Partial<Record<number, string>> = {
+  1: "url(/background/hockleescenes/cityhall.png)",
+  2: "url(/background/hockleescenes/market.png)",
+  3: "url(/background/hockleescenes/classroom.png)",
+  4: "url(/background/hockleescenes/governmentoffice.png)",
+  5: "url(/background/hockleescenes/busdepot.png)",
+  6: "url(/background/hockleescenes/busdepot.png)",
+  7: "url(/background/hockleescenes/negotiation.png)",
+  8: "url(/background/hockleescenes/alexandra-road.png)",
+  9: "url(/background/hockleescenes/commandcenter.png)",
+  10: "url(/background/hockleescenes/funeral.png)",
+  11: "url(/background/hockleescenes/negotiation.png)",
+  12: "url(/background/hockleescenes/kkhospital.png)",
+  13: "url(/background/hockleescenes/kallangairport.png)",
+  15: "url(/background/hockleescenes/schoollake.png)",
+  16: "url(/background/hockleescenes/classroom.png)",
+  17: "url(/background/hockleescenes/schoolgates.png)",
+};
+
 export const buildDefaultSceneConfig = (sceneNumber: number): BaseSceneConfig => {
   const scene = getScene(sceneNumber);
 
@@ -3193,9 +3212,7 @@ export const buildDefaultSceneConfig = (sceneNumber: number): BaseSceneConfig =>
     sceneTitle: `Scene ${scene.sceneNumber}: ${scene.locationEvent}`,
     sceneSubtitle: buildSceneSubtitle(sceneNumber),
     sceneBackgroundImage:
-      sceneNumber === 1
-        ? "url(/background/hockleescenes/cityhall.png)"
-        : "url(/background/placeholder.png)",
+      DEFAULT_SCENE_BACKGROUNDS[sceneNumber] ?? "url(/background/placeholder.png)",
     artifacts: [DEFAULT_PETIR_ARTIFACT],
     npcFigures:
       sceneNumber === 1

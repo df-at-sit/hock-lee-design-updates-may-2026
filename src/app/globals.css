@@ -17,7 +17,7 @@
   --foreground: #171717;
   --hl-dialogue-bubble-width: min(320px, calc(100vw - 48px));
   --scene-page-x-inset: 20px;
-  --scene-page-right-inset: 48px;
+  --scene-page-right-inset: 20px;
   --scene-hud-top-inset: 24px;
   --scene-hud-control-size: 56px;
   --scene-hud-control-gap: 12px;
@@ -26,8 +26,8 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: Arial, Helvetica, sans-serif;
+  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -63,7 +63,7 @@ body {
   position: absolute;
   top: 24px;
   left: calc(var(--scene-page-x-inset) - 8px);
-  z-index: 3;
+  z-index: 30;
   display: flex;
   flex-direction: column;
   gap: 0;
@@ -1049,13 +1049,42 @@ body {
   z-index: 180;
   align-self: flex-start;
   margin-top: 18px;
-  margin-left: 24px;
+  margin-left: 0;
   pointer-events: auto;
 }
 
 .map-page .scene-panel-merlion {
   margin-top: 24px;
   margin-left: 32px;
+}
+
+.map-merlion-hud-floating {
+  position: absolute;
+  top: 220px;
+  left: var(--scene-page-x-inset);
+  z-index: 180;
+  pointer-events: auto;
+}
+
+.map-merlion-chat-floating {
+  position: absolute;
+  top: calc(var(--hl-map-merlion-chat-top, 220px));
+  left: calc(var(--scene-page-x-inset) + 24px);
+  z-index: 180;
+  pointer-events: auto;
+}
+
+.map-merlion-chat-floating .hl-merlion-chat-panel-frame.double-one-step {
+  max-height: min(46vh, 420px);
+  margin-top: 0;
+}
+
+.map-merlion-chat-floating .hl-merlion-chat-panel {
+  max-height: calc(min(46vh, 420px) - 24px);
+}
+
+.map-merlion-chat-floating .hl-merlion-chat-panel__messages {
+  min-height: 70px;
 }
 
 .hl-ending-merlion-panel {
@@ -1086,8 +1115,8 @@ body {
 }
 
 .hl-merlion-hud-icon {
-  width: clamp(48px, 5vw, 64px);
-  height: clamp(40px, 4.2vw, 54px);
+  width: clamp(36px, 3.4vw, 48px);
+  height: clamp(36px, 3.4vw, 48px);
   object-fit: contain;
   image-rendering: auto;
   filter:
@@ -1095,6 +1124,203 @@ body {
     drop-shadow(0 5px 8px rgba(0, 0, 0, 0.42));
   pointer-events: none;
   user-select: none;
+}
+
+.hl-merlion-chat-panel-frame.double-one-step {
+  --one-step-border-color: #111110;
+  --one-step-border-gap-color: #efe2c8;
+  --one-step-border-inner-color: #111110;
+  --one-step-border-fill: #eee3cd;
+  --one-step-border-outer: 4px;
+  --one-step-border-gap: 4px;
+  --one-step-border-inner: 4px;
+  position: relative;
+  z-index: 180;
+  width: min(34vw, 360px);
+  min-width: min(260px, calc(100vw - 40px));
+  max-height: min(64vh, 560px);
+  margin-top: 10px;
+  box-shadow:
+    8px 8px 0 #111110,
+    12px 12px 0 rgba(0, 0, 0, 0.34);
+  color: #5a2a08;
+  pointer-events: auto;
+  transform-origin: top left;
+  will-change: opacity, transform;
+  animation: hl-merlion-chat-zoom-in 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.hl-merlion-chat-panel-frame--closing.double-one-step {
+  animation: hl-merlion-chat-zoom-out 260ms cubic-bezier(0.7, 0, 0.84, 0) both;
+}
+
+.hl-merlion-chat-panel {
+  display: flex;
+  max-height: calc(min(64vh, 560px) - 24px);
+  flex-direction: column;
+  gap: clamp(0.5rem, 1vh, 0.75rem);
+  overflow: hidden;
+  background: #eee3cd;
+}
+
+.hl-merlion-chat-panel>* {
+  position: relative;
+  z-index: 1;
+}
+
+.hl-merlion-chat-panel__header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: clamp(0.5rem, 1vw, 0.75rem);
+  padding: clamp(0.7rem, 1.4vw, 1rem) clamp(0.8rem, 1.7vw, 1.15rem) 0;
+}
+
+.hl-merlion-chat-panel__avatar {
+  width: clamp(36px, 3.4vw, 48px);
+  height: clamp(36px, 3.4vw, 48px);
+  object-fit: contain;
+  image-rendering: auto;
+}
+
+.hl-merlion-chat-panel__title {
+  min-width: 0;
+  color: #111110;
+  font-size: clamp(1.55rem, 1.9vw, 2.25rem);
+  line-height: 0.95;
+  overflow-wrap: anywhere;
+}
+
+.hl-merlion-chat-panel__close {
+  display: grid;
+  width: clamp(30px, 3vw, 38px);
+  height: clamp(30px, 3vw, 38px);
+  place-items: center;
+  border: 3px solid #111110;
+  background: #ed7c00;
+  color: #111110;
+  font: inherit;
+  font-size: clamp(1.25rem, 1.75vw, 1.7rem);
+  line-height: 0.8;
+  cursor: pointer;
+}
+
+.hl-merlion-chat-panel__close:focus-visible,
+.hl-merlion-chat-panel__prompts button:focus-visible,
+.hl-merlion-chat-panel__composer input:focus-visible,
+.hl-merlion-chat-panel__composer button:focus-visible {
+  outline: 3px solid #ffff00;
+  outline-offset: 3px;
+}
+
+.hl-merlion-chat-panel__rule {
+  height: 3px;
+  margin: 0 clamp(0.8rem, 1.7vw, 1.15rem);
+  background: #111110;
+}
+
+.hl-merlion-chat-panel__messages {
+  display: flex;
+  min-height: 110px;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: clamp(0.55rem, 1vh, 0.8rem);
+  overflow-y: auto;
+  padding: clamp(0.4rem, 1vw, 0.65rem) clamp(0.8rem, 1.7vw, 1.15rem);
+  scrollbar-width: thin;
+  scrollbar-color: #8f887b transparent;
+}
+
+.hl-merlion-chat-panel__intro {
+  display: grid;
+  gap: clamp(0.55rem, 1.05vh, 0.85rem);
+  max-width: 92%;
+  font-size: clamp(1.05rem, 1.1vw, 1.35rem);
+  line-height: 1.28;
+}
+
+.hl-merlion-chat-panel__intro p {
+  margin: 0;
+}
+
+.hl-merlion-chat-panel__bubble {
+  width: fit-content;
+  max-width: 82%;
+  padding: 0.55rem 0.75rem;
+  font-size: clamp(0.98rem, 1vw, 1.18rem);
+  line-height: 1.22;
+  overflow-wrap: anywhere;
+  clip-path: polygon(0 8px, 8px 8px, 8px 0, calc(100% - 8px) 0, calc(100% - 8px) 8px, 100% 8px, 100% calc(100% - 8px), calc(100% - 8px) calc(100% - 8px), calc(100% - 8px) 100%, 8px 100%, 8px calc(100% - 8px), 0 calc(100% - 8px));
+}
+
+.hl-merlion-chat-panel__bubble--user {
+  align-self: flex-end;
+  background: rgba(255, 251, 242, 0.9);
+  color: #111110;
+}
+
+.hl-merlion-chat-panel__bubble--merlion {
+  align-self: flex-start;
+  background: rgba(237, 124, 0, 0.2);
+  color: #5a2a08;
+}
+
+.hl-merlion-chat-panel__prompts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0 clamp(0.8rem, 1.7vw, 1.15rem);
+}
+
+.hl-merlion-chat-panel__prompts button,
+.hl-merlion-chat-panel__composer button {
+  border: 0;
+  background: rgba(255, 251, 242, 0.86);
+  color: #4d4d4d;
+  font: inherit;
+  cursor: pointer;
+}
+
+.hl-merlion-chat-panel__prompts button {
+  flex: 1 1 7.8rem;
+  min-height: 38px;
+  padding: 0.55rem 0.7rem;
+  font-size: clamp(0.95rem, 1vw, 1.12rem);
+  line-height: 1.05;
+  clip-path: polygon(0 8px, 8px 8px, 8px 0, calc(100% - 8px) 0, calc(100% - 8px) 8px, 100% 8px, 100% calc(100% - 8px), calc(100% - 8px) calc(100% - 8px), calc(100% - 8px) 100%, 8px 100%, 8px calc(100% - 8px), 0 calc(100% - 8px));
+}
+
+.hl-merlion-chat-panel__composer {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin: 0 clamp(0.8rem, 1.7vw, 1.15rem) clamp(0.7rem, 1.4vw, 1rem);
+  padding: 0.6rem 0.75rem;
+  background: rgba(255, 251, 242, 0.9);
+  clip-path: polygon(0 8px, 8px 8px, 8px 0, calc(100% - 8px) 0, calc(100% - 8px) 8px, 100% 8px, 100% calc(100% - 8px), calc(100% - 8px) calc(100% - 8px), calc(100% - 8px) 100%, 8px 100%, 8px calc(100% - 8px), 0 calc(100% - 8px));
+}
+
+.hl-merlion-chat-panel__composer input {
+  min-width: 0;
+  flex: 1 1 auto;
+  border: 0;
+  background: transparent;
+  color: #111110;
+  font: inherit;
+  font-size: clamp(0.95rem, 1vw, 1.12rem);
+  line-height: 1;
+  outline: none;
+}
+
+.hl-merlion-chat-panel__composer input::placeholder {
+  color: rgba(17, 17, 16, 0.52);
+}
+
+.hl-merlion-chat-panel__composer button {
+  flex: 0 0 auto;
+  padding: 0;
+  font-size: clamp(0.95rem, 1vw, 1.12rem);
+  line-height: 1;
 }
 
 .hl-merlion-chat-bubble-shell {
@@ -1147,6 +1373,54 @@ body {
 
   .hl-merlion-chat-bubble.npc-chat-bubble {
     font-size: clamp(1.05rem, 5vw, 1.3rem);
+  }
+}
+
+@media (max-width: 700px) {
+  .hl-merlion-chat-panel-frame.double-one-step {
+    width: min(70vw, 280px);
+    min-width: min(250px, calc(100vw - 40px));
+    max-height: 58vh;
+  }
+
+  .hl-merlion-chat-panel {
+    max-height: calc(58vh - 24px);
+  }
+
+  .hl-merlion-chat-panel__header {
+    gap: 0.45rem;
+  }
+
+  .hl-merlion-chat-panel__title {
+    font-size: clamp(1.4rem, 6.4vw, 1.8rem);
+  }
+
+  .hl-merlion-chat-panel__prompts button {
+    flex-basis: 100%;
+  }
+}
+
+@keyframes hl-merlion-chat-zoom-in {
+  from {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes hl-merlion-chat-zoom-out {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: scale(0.7);
   }
 }
 
@@ -2538,6 +2812,220 @@ button.scene-onboarding-focus--artifact-action::after,
   font-family: "PPNeueBit", "PPNeueBit Bold", Arial, sans-serif !important;
 }
 
+.quest-menu-lightbox-overlay {
+  padding: clamp(10px, 3vw, 54px);
+}
+
+.quest-menu-lightbox-overlay,
+.quest-menu-lightbox-overlay * {
+  font-family: "PPNeueBit Bold", "PPNeueBit", Arial, sans-serif !important;
+}
+
+.quest-menu-lightbox-shell {
+  width: min(92vw, 520px);
+  max-height: min(96vh, 820px);
+}
+
+.quest-menu-lightbox-frame.double-one-step {
+  --one-step-border-color: #f07c00;
+  --one-step-border-gap-color: #eee3cd;
+  --one-step-border-inner-color: #f07c00;
+  --one-step-border-fill: #eee3cd;
+  --one-step-border-outer: 4px;
+  --one-step-border-gap: 4px;
+  --one-step-border-inner: 4px;
+  width: 100%;
+  box-shadow: 0 8px 0 rgba(0, 0, 0, 0.28);
+}
+
+.quest-menu-lightbox-panel {
+  width: 100%;
+  max-height: min(96vh, 820px);
+  overflow-y: auto;
+  background: #eee3cd;
+  color: #111110;
+  padding: clamp(18px, 2.6vw, 32px) clamp(16px, 2.6vw, 28px);
+}
+
+.quest-menu-lightbox-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: clamp(10px, 1.6vw, 18px);
+  margin-bottom: clamp(16px, 2.4vw, 28px);
+}
+
+.quest-menu-lightbox-heading {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: clamp(10px, 1.4vw, 16px);
+}
+
+.quest-menu-lightbox-heading-icon {
+  width: clamp(36px, 4vw, 48px);
+  height: clamp(36px, 4vw, 48px);
+  object-fit: contain;
+  image-rendering: pixelated;
+  flex: 0 0 auto;
+}
+
+.quest-menu-lightbox-heading h2 {
+  margin: 0;
+  color: #111110;
+  font-size: clamp(1.6rem, 2.6vw, 2.4rem);
+  font-weight: 700;
+  line-height: 0.9;
+  letter-spacing: 0;
+}
+
+.quest-menu-lightbox-close {
+  flex: 0 0 auto;
+  width: clamp(32px, 3.4vw, 40px);
+  height: clamp(32px, 3.4vw, 40px);
+  font-size: clamp(1.1rem, 1.6vw, 1.5rem);
+}
+
+.quest-menu-lightbox-list {
+  display: grid;
+  gap: clamp(10px, 1.4vw, 16px);
+}
+
+.quest-menu-lightbox-card {
+  display: grid;
+  grid-template-columns: clamp(56px, 6vw, 72px) minmax(0, 1fr) clamp(80px, 9vw, 104px);
+  min-height: clamp(72px, 8vw, 92px);
+  align-items: center;
+  gap: clamp(10px, 1.6vw, 18px);
+  width: 100%;
+  border: 4px solid #f07c00;
+  background: rgba(255, 251, 242, 0.48);
+  color: #111110;
+  padding: clamp(10px, 1.4vw, 16px) clamp(10px, 1.6vw, 18px);
+  text-align: left;
+}
+
+button.quest-menu-lightbox-card {
+  cursor: pointer;
+}
+
+button.quest-menu-lightbox-card:hover,
+button.quest-menu-lightbox-card:focus-visible {
+  background: rgba(255, 251, 242, 0.8);
+  outline: 4px solid #ffffff;
+  outline-offset: 4px;
+}
+
+.quest-menu-lightbox-card--complete {
+  border-color: #c6ebc5;
+  background: rgba(223, 239, 216, 0.78);
+}
+
+.quest-menu-lightbox-card-image-shell {
+  display: flex;
+  width: clamp(52px, 5.6vw, 68px);
+  height: clamp(52px, 5.6vw, 68px);
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 251, 242, 0.74);
+  overflow: hidden;
+}
+
+.quest-menu-lightbox-card-image {
+  display: block;
+  max-width: 82%;
+  max-height: 92%;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+.quest-menu-lightbox-card-copy {
+  display: grid;
+  min-width: 0;
+  gap: clamp(4px, 0.6vw, 8px);
+}
+
+.quest-menu-lightbox-card-title {
+  color: #111110;
+  font-size: clamp(1.1rem, 1.7vw, 1.55rem);
+  font-weight: 700;
+  line-height: 0.95;
+  letter-spacing: 0;
+}
+
+.quest-menu-lightbox-card-description {
+  max-width: 58ch;
+  color: #7d7d7d;
+  font-family: "PPNeueBit Bold", "PPNeueBit", Arial, sans-serif !important;
+  font-size: clamp(0.78rem, 1vw, 0.95rem);
+  font-weight: 700;
+  line-height: 1.35;
+  letter-spacing: 0;
+}
+
+.quest-menu-lightbox-status {
+  display: flex;
+  min-height: clamp(42px, 4.4vw, 54px);
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 4px;
+  justify-self: end;
+  width: 100%;
+  max-width: 104px;
+  padding: 6px 8px;
+  text-align: center;
+}
+
+.quest-menu-lightbox-status--active {
+  background: #f07c00;
+  color: #7a3f00;
+}
+
+.quest-menu-lightbox-status--complete {
+  background: #111110;
+  color: #93e47f;
+}
+
+.quest-menu-lightbox-status-progress,
+.quest-menu-lightbox-status-label {
+  display: block;
+  font-size: clamp(0.9rem, 1.3vw, 1.2rem);
+  font-weight: 700;
+  line-height: 0.9;
+  letter-spacing: 0;
+}
+
+@media (max-width: 760px) {
+  .quest-menu-lightbox-panel {
+    padding: 24px 18px;
+  }
+
+  .quest-menu-lightbox-header {
+    margin-bottom: 24px;
+  }
+
+  .quest-menu-lightbox-card {
+    grid-template-columns: 78px minmax(0, 1fr);
+    gap: 14px;
+    min-height: 0;
+    padding: 14px;
+  }
+
+  .quest-menu-lightbox-card-image-shell {
+    width: 78px;
+    height: 78px;
+  }
+
+  .quest-menu-lightbox-status {
+    grid-column: 1 / -1;
+    justify-self: stretch;
+    min-height: 54px;
+    max-width: none;
+    flex-direction: row;
+  }
+}
+
 .sidequest-lightbox-shell {
   display: flex;
   width: min(92vw, 520px);
@@ -2592,6 +3080,20 @@ button.scene-onboarding-focus--artifact-action::after,
   top: 10px;
   right: 10px;
   z-index: 2;
+}
+
+.sidequest-lightbox-back {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 2;
+}
+
+.sidequest-lightbox-back:hover,
+.sidequest-lightbox-back:focus-visible {
+  background: #ffb13b;
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
 }
 
 .hl-pixel-close-button:hover,
@@ -4677,19 +5179,28 @@ button.scene-onboarding-focus--artifact-action::after,
 
 .hl-pixel-map-bg {
   background-image: url("/background/maps/singapore-map.png");
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  position: absolute;
+  inset: 0;
 }
 
 .map-page {
-  --hl-pixel-map-node-width: clamp(70px, 5.7vw, 92px);
+  --hl-pixel-map-aspect: 16 / 9;
+  --hl-pixel-map-node-width: 5.7cqw;
   --hl-pixel-map-node-height: calc((var(--hl-pixel-map-node-width) * 128) / 194);
   --hl-pixel-map-zoom: 1.07;
 }
 
-.map-page .hl-pixel-map-bg,
-.map-page .hl-pixel-map-route-layer,
-.map-page .hl-pixel-map-node-layer {
-  transform: scale(var(--hl-pixel-map-zoom));
+.hl-pixel-map-stage {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(100%, calc(100dvh * 16 / 9));
+  aspect-ratio: var(--hl-pixel-map-aspect);
+  transform: translate(-50%, -50%) scale(var(--hl-pixel-map-zoom));
   transform-origin: center;
+  container-type: inline-size;
 }
 
 .hl-pixel-map-route-layer {
@@ -4698,27 +5209,25 @@ button.scene-onboarding-focus--artifact-action::after,
   pointer-events: none;
   opacity: 0.98;
   filter: drop-shadow(0 2px 0 rgba(75, 48, 24, 0.28));
+  transform: translateY(3%);
 }
 
 .hl-pixel-map-route-layer--student {
   left: 28.8%;
   top: 12.4%;
   width: 36.2%;
-  height: 61.8%;
 }
 
 .hl-pixel-map-route-layer--bus-worker {
   left: 31.4%;
   top: 30.1%;
   width: 34%;
-  height: 46.1%;
 }
 
 .hl-pixel-map-route-layer--civil-servant {
-  left: 38.45%;
-  top: 15.84%;
-  width: 35.36%;
-  height: 59.82%;
+  left: 27%;
+  top: 25%;
+  width: 48%;
 }
 
 .hl-pixel-map-route-svg {
@@ -5247,7 +5756,7 @@ button.scene-onboarding-focus--artifact-action::after,
   max-width: 1800px;
   margin: 0 auto;
   padding:
-    clamp(22px, 3.8vh, 42px) clamp(24px, 3vw, 54px) clamp(128px, 17vh, 210px);
+    clamp(22px, 3.8vh, 42px) clamp(56px, 6vw, 120px) clamp(128px, 17vh, 210px);
   overflow: clip;
 }
 
@@ -5656,7 +6165,7 @@ button.scene-onboarding-focus--artifact-action::after,
 
 .hl-character-select-actions {
   position: absolute;
-  right: 54px;
+  right: clamp(56px, 6vw, 120px);
   bottom: clamp(18px, 3vh, 36px);
   z-index: 2;
   display: flex;
