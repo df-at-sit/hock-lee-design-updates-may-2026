@@ -402,7 +402,7 @@ const NEGOTIATION_BW_NPC_OVERRIDES: Record<string, Partial<SceneNpcFigure>> = {
       width: "136px",
     },
   },
-  "negotiation-feng-swee-suan-south": {
+  "negotiation-fong-swee-suan-south": {
     position: {
       left: "20%",
       top: "calc(85% - 150px)",
@@ -517,7 +517,7 @@ const SCHOOL_LAKE_CS_NPC_OVERRIDES: Record<string, Partial<SceneNpcFigure>> = {
     interactionHotspotStyle: SCHOOL_LAKE_STUDENT_INTERACTION_HOTSPOT,
   },
 };
-const BUS_DEPOT_CS_POLICE_STAGE_TRIGGER_NPC_ID = "bus-depot-feng-swee-suan-gate";
+const BUS_DEPOT_CS_POLICE_STAGE_TRIGGER_NPC_ID = "bus-depot-fong-swee-suan-gate";
 const BUS_DEPOT_CS_SUPPORT_WIDTH = "156px";
 const BUS_DEPOT_CS_SUPPORT_SCALE = 132 / 156;
 const BUS_DEPOT_BW_SUPPORT_WIDTH = "132px";

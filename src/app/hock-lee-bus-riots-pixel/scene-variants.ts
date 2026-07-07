@@ -828,11 +828,11 @@ const GOVERNMENT_OFFICE_LEE_KUAN_YEW_NPC: SceneNpcFigure = {
 };
 
 const GOVERNMENT_OFFICE_FENG_SWEE_SUAN_NPC: SceneNpcFigure = {
-  id: "government-office-feng-swee-suan-east",
-  image: "/npcfigures/fengsweesuan/Feng Swee Suan_East South.webp",
-  alt: "Feng Swee Suan facing southeast in the government office",
+  id: "government-office-fong-swee-suan-east",
+  image: "/npcfigures/fongsweesuan/Fong Swee Suan_East South.webp",
+  alt: "Fong Swee Suan facing southeast in the government office",
   className: "npc-figure--priority-chat",
-  chatBubbleSpeaker: "Feng Swee Suan",
+  chatBubbleSpeaker: "Fong Swee Suan",
   chatBubbleTexts: [
     "Our men did not come here over one insult. Hock Lee denied union leave, favoured a rival union, and kept dismissing workers as warnings to the rest.",
     "Begin with the 229 men thrown out. If they are not taken back, no one at the depot will call these talks serious.",
@@ -1131,11 +1131,11 @@ const BUS_DEPOT_RAJIV_POLICE_NPCS: SceneNpcFigure[] = [
 ];
 
 const BUS_DEPOT_FENG_SWEE_SUAN_NPC = {
-  id: "bus-depot-feng-swee-suan-east-south",
-  image: "/npcfigures/fengsweesuan/Feng Swee Suan_East South.webp",
-  alt: "Feng Swee Suan facing southeast in the bus depot",
+  id: "bus-depot-fong-swee-suan-east-south",
+  image: "/npcfigures/fongsweesuan/Fong Swee Suan_East South.webp",
+  alt: "Fong Swee Suan facing southeast in the bus depot",
   className: "npc-figure--priority-chat",
-  chatBubbleSpeaker: "Feng Swee Suan",
+  chatBubbleSpeaker: "Fong Swee Suan",
   chatBubbleTexts: [
     "The men did not walk out for drama. Hock Lee denied union leave, favoured the other union, and treated workers as if we could be discarded.",
     "When 229 men were dismissed, the argument changed. We will hold the gate until management is forced to face what it has done.",
@@ -1152,7 +1152,7 @@ const BUS_DEPOT_FENG_SWEE_SUAN_NPC = {
 
 const BUS_DEPOT_GATE_FENG_SWEE_SUAN_NPC = {
   ...BUS_DEPOT_FENG_SWEE_SUAN_NPC,
-  id: "bus-depot-feng-swee-suan-gate",
+  id: "bus-depot-fong-swee-suan-gate",
   chatBubbleTexts: [
     "Hold the line at the gates. The hunger strike and blockade mean nothing if the buses slip out as though the dismissals never happened.",
     "Students are bringing food and songs because they want the company to see this dispute is no longer hidden inside the depot.",
@@ -1193,12 +1193,12 @@ const BUS_DEPOT_NPC_Y_OFFSET_PX = -200;
 const BUS_DEPOT_NON_INTERACTIVE_NPC_SCALE = 0.8;
 const BUS_DEPOT_GATE_STAGE_MIN_Z_INDEX = 13;
 const BUS_DEPOT_GATE_STAGE_BEHIND_AHMAD_IDS = new Set([
-  "bus-depot-feng-swee-suan-gate",
+  "bus-depot-fong-swee-suan-gate",
   "bus-depot-bus-boss-west",
 ]);
 const BUS_DEPOT_INTERACTIVE_NPC_IDS = new Set([
-  "bus-depot-feng-swee-suan-east-south",
-  "bus-depot-feng-swee-suan-gate",
+  "bus-depot-fong-swee-suan-east-south",
+  "bus-depot-fong-swee-suan-gate",
   "bus-depot-bus-boss-west",
 ]);
 
@@ -2509,11 +2509,11 @@ const NEGOTIATION_FRONT_LEADERS_NPCS: SceneNpcFigure[] = [
     },
   },
   {
-    id: "negotiation-feng-swee-suan-south",
-    image: "/npcfigures/fengsweesuan/Feng Swee Suan_East.webp",
-    alt: "Feng Swee Suan in front at the negotiation hall",
+    id: "negotiation-fong-swee-suan-south",
+    image: "/npcfigures/fongsweesuan/Fong Swee Suan_East.webp",
+    alt: "Fong Swee Suan in front at the negotiation hall",
     className: "npc-figure--priority-chat",
-    chatBubbleSpeaker: "Feng Swee Suan",
+    chatBubbleSpeaker: "Fong Swee Suan",
     chatBubbleTexts: [
       "The workers did not come here for ceremony. They came because dismissals, poor conditions, and intimidation have gone on too long.",
       "Do not ask men who sat at the gates and buried the dead to return with nothing but speeches.",
@@ -3315,11 +3315,11 @@ export const PIXEL_SCENE_VARIANTS: Record<PixelSceneVariantKey, BaseSceneConfig>
     npcFigures: BUS_DEPOT_NPCS,
     npcTransitions: [
       {
-        triggerNpcId: "bus-depot-feng-swee-suan-east-south",
+        triggerNpcId: "bus-depot-fong-swee-suan-east-south",
         nextNpcFigures: BUS_DEPOT_GATE_NPCS,
       },
       {
-        triggerNpcId: "bus-depot-feng-swee-suan-gate",
+        triggerNpcId: "bus-depot-fong-swee-suan-gate",
         nextNpcFigures: BUS_DEPOT_GATE_WITH_POLICE_NPCS,
       },
     ],
