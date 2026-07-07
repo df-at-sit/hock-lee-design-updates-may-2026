@@ -374,7 +374,11 @@ function RoleMapPage({ initialMapState, selectedCharacter }: RoleMapPageProps) {
     const measure = () => {
       const barsElement = barsSlotRef.current;
       if (!barsElement) return;
-      const rect = barsElement.getBoundingClientRect();
+      const cardElement = barsElement
+        .closest(".scene-title-stack")
+        ?.querySelector<HTMLElement>(".hl-map-character-profile-card");
+      const anchorElement = cardElement ?? barsElement;
+      const rect = anchorElement.getBoundingClientRect();
       setMerlionLeftPx(rect.left);
       setMerlionHudTopPx(rect.bottom + MERLION_HUD_GAP_PX);
     };

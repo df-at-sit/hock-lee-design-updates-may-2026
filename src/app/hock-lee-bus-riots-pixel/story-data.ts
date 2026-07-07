@@ -401,7 +401,7 @@ export const ROLE_STORY_STEPS: Record<CharacterCode, StoryStep[]> = {
       timelineLabel: "First Briefing",
       sceneTitle: "Pre-Riot: City Hall Briefing",
       sceneSubtitle:
-        "Rajiv begins inside a Labour Front government fresh from the 2 April 1955 election. Marshall's victory feels hopeful, but worker grievances, bus disputes, and British scrutiny are already closing in.",
+        "Rajiv TEST TEST begins inside a Labour Front government fresh from the 2 April 1955 election. Marshall's victory feels hopeful, but worker grievances, bus disputes, and British scrutiny are already closing in.",
       summary: "The new government inherits public hopes and an unstable city.",
     },
     {
@@ -528,7 +528,7 @@ export const ROLE_STORY_STEPS: Record<CharacterCode, StoryStep[]> = {
       dateLabel: STORY_DATE_LABELS.scene1,
       sceneTitle: "Pre-Riot: City Hall",
       sceneSubtitle:
-        "Outside City Hall, Ahmad hears Labour Front's promises and wonders whether a worker will finally be heard after the election or only addressed once the trouble begins.",
+        "Outside City Hall, Ahmad RANDOM hears Labour Front's promises and wonders whether a worker will finally be heard after the election or only addressed once the trouble begins.",
       summary: "Political promises now invite worker judgment.",
     },
     {
