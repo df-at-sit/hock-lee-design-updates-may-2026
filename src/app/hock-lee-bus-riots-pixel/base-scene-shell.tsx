@@ -3054,7 +3054,16 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
                                             closeMerlionChatPanel();
                                         }}
                                     >
-                                        ×
+                                        <svg
+                                            className="hl-merlion-chat-panel__close-icon"
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            width="10"
+                                            height="10"
+                                            viewBox="0 0 10 10"
+                                            fill="none"
+                                        >
+                                            <path d="M1.10868 10H2.22465V8.88484H3.33333V7.77697H4.44201V6.6691H5.55799V7.77697H6.66667V8.88484H7.78264V10H8.89132V8.88484H10V7.77697H8.89132V6.6691H7.78264V5.55394H6.66667V4.44606H7.78264V3.33819H8.89132V2.22303H10V1.11516H8.89132V0H7.78264V1.11516H6.66667V2.22303H5.55799V3.33819H4.44201V2.22303H3.33333V1.11516H2.22465V0H1.10868V1.11516H0V2.22303H1.10868V3.33819H2.22465V4.44606H3.33333V5.55394H2.22465V6.6691H1.10868V7.77697H0V8.88484H1.10868V10Z" />
+                                        </svg>
                                     </button>
                                 </header>
                                 <div className="hl-merlion-chat-panel__rule" />
@@ -4342,16 +4351,17 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
                                     setIsDrawerOpen(false);
                                 }}
                                 aria-label="Close drawer"
-                                style={
-                                    drawerFocus === "close"
-                                        ? {
-                                            outline: "2px solid #ffff00",
-                                            outlineOffset: "2px",
-                                        }
-                                        : undefined
-                                }
                             >
-                                ×
+                                <svg
+                                    className="hl-pixel-close-button-icon"
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="10"
+                                    height="10"
+                                    viewBox="0 0 10 10"
+                                    fill="none"
+                                >
+                                    <path d="M1.10868 10H2.22465V8.88484H3.33333V7.77697H4.44201V6.6691H5.55799V7.77697H6.66667V8.88484H7.78264V10H8.89132V8.88484H10V7.77697H8.89132V6.6691H7.78264V5.55394H6.66667V4.44606H7.78264V3.33819H8.89132V2.22303H10V1.11516H8.89132V0H7.78264V1.11516H6.66667V2.22303H5.55799V3.33819H4.44201V2.22303H3.33333V1.11516H2.22465V0H1.10868V1.11516H0V2.22303H1.10868V3.33819H2.22465V4.44606H3.33333V5.55394H2.22465V6.6691H1.10868V7.77697H0V8.88484H1.10868V10Z" fill="#111110" />
+                                </svg>
                             </button>
                             <div
                                 className="artifact-drawer-panel__content"

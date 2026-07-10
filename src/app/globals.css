@@ -1152,9 +1152,9 @@ body {
   --one-step-border-inner: 4px;
   position: relative;
   z-index: 180;
-  width: min(34vw, 360px);
+  width: min(38vw, 400px);
   min-width: min(260px, calc(100vw - 40px));
-  max-height: min(64vh, 560px);
+  max-height: min(68vh, 600px);
   margin-top: 10px;
   box-shadow:
     8px 8px 0 #111110,
@@ -1172,7 +1172,7 @@ body {
 
 .hl-merlion-chat-panel {
   display: flex;
-  max-height: calc(min(64vh, 560px) - 24px);
+  max-height: calc(min(68vh, 600px) - 24px);
   flex-direction: column;
   gap: clamp(0.5rem, 1vh, 0.75rem);
   overflow: hidden;
@@ -1208,17 +1208,40 @@ body {
 }
 
 .hl-merlion-chat-panel__close {
-  display: grid;
-  width: clamp(30px, 3vw, 38px);
-  height: clamp(30px, 3vw, 38px);
-  place-items: center;
-  border: 3px solid #111110;
-  background: #ed7c00;
+  position: relative;
+  display: flex;
+  width: 32px;
+  height: 32px;
+  margin-top: 2px;
+  margin-left: 2px;
+  justify-content: center;
+  align-items: center;
+  aspect-ratio: 1 / 1;
+  border: 2px solid var(--Icons-default, #111110);
+  background: var(--Icons-action, #ef7d0b);
   color: #111110;
   font: inherit;
-  font-size: clamp(1.25rem, 1.75vw, 1.7rem);
-  line-height: 0.8;
   cursor: pointer;
+}
+
+.hl-merlion-chat-panel__close-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+  aspect-ratio: 1 / 1;
+  fill: var(--Icons-default, #111110);
+}
+
+.hl-merlion-chat-panel__close:hover {
+  border: 2px solid var(--Icons-default, #111110);
+  margin-right: 2px;
+  margin-bottom: 2px;
+  background: var(--Icons-action, #ef7d0b);
+  box-shadow: 2px 2px 0 0 rgba(0, 0, 0, 0.5);
 }
 
 .hl-merlion-chat-panel__close:focus-visible,
@@ -1251,7 +1274,7 @@ body {
   display: grid;
   gap: clamp(0.55rem, 1.05vh, 0.85rem);
   max-width: 92%;
-  font-size: clamp(1.05rem, 1.1vw, 1.35rem);
+  font-size: clamp(1.05rem, 1.1vw, 1.25rem);
   line-height: 1.28;
 }
 
@@ -1408,7 +1431,7 @@ body {
   }
 
   .hl-merlion-chat-panel__title {
-    font-size: clamp(1.4rem, 6.4vw, 1.8rem);
+    font-size: clamp(1.4rem, 6.4vw, 1.5rem);
   }
 
   .hl-merlion-chat-panel__prompts button {
@@ -3119,6 +3142,33 @@ button.quest-menu-lightbox-card:focus-visible {
   background: #ffb13b;
   outline: 2px solid #ffffff;
   outline-offset: 2px;
+}
+
+.artifact-drawer-close.hl-pixel-close-button {
+  position: relative;
+  display: flex;
+  width: 32px;
+  height: 32px;
+  margin-top: 2px;
+  margin-left: 2px;
+  justify-content: center;
+  align-items: center;
+  aspect-ratio: 1 / 1;
+  border: 2px solid var(--Icons-default, #111110);
+  background: var(--Icons-action, #ef7d0b);
+  color: #111110;
+  font: inherit;
+  cursor: pointer;
+}
+
+.artifact-drawer-close.hl-pixel-close-button:hover,
+.artifact-drawer-close.hl-pixel-close-button:focus-visible {
+  outline: none;
+  border: 2px solid var(--Icons-default, #111110);
+  margin-right: 2px;
+  margin-bottom: 2px;
+  background: var(--Icons-action, #ef7d0b);
+  box-shadow: 2px 2px 0 0 rgba(0, 0, 0, 0.5);
 }
 
 .sidequest-lightbox-kicker {
