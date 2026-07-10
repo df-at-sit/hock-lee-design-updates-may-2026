@@ -29,7 +29,7 @@ import {
   type MapNodeKey,
 } from "../story-data";
 import { clearDispositionProgress } from "../disposition-state";
-import { INTRO_CUTSCENE_ROUTE, OUTRO_CUTSCENE_ROUTE } from "../story-paths";
+import { OUTRO_CUTSCENE_ROUTE } from "../story-paths";
 import { GameMenuOverlay } from "../game-menu-overlay";
 import { useSelectedCharacterCode } from "../use-selected-character-code";
 import { CharacterProfileCard } from "../character-profile-card";
@@ -121,6 +121,16 @@ const getRoleMapRoute = (role: CharacterCode) =>
     : role === "BW"
       ? BUS_WORKER_MAP_ROUTE
       : STUDENT_MAP_ROUTE;
+
+// Shown only for the Chinese Student once the final stop (Home: Return) has
+// unlocked, i.e. right after leaving School Gates (stop 9).
+const SCHOOL_GATES_HOME_CONNECTOR = {
+  className: "hl-pixel-map-connector--school-gates-home",
+  width: 56,
+  height: 82,
+  viewBox: "0 0 56 82",
+  path: "M46.8701 80.8223C37.8619 49.2183 -14.9992 53.9906 7.02077 32.9213C24.6368 16.0658 45.7226 5.83217 54.0635 2.82227",
+};
 
 type ResolvedMapNode = {
   key: MapNodeKey;
@@ -346,6 +356,19 @@ function RoleMapPage({ initialMapState, selectedCharacter }: RoleMapPageProps) {
   const [activeNodeKey, setActiveNodeKey] = useState<MapNodeKey | null>(
     initialMapState.activeNodeKey
   );
+  // Some node keys (e.g. "home") are reused by more than one timeline stop
+  // (the pre-riot visit and the post-riot return share one map marker).
+  // activeNodeKey alone can't tell those stops apart, so track exactly which
+  // timeline row was interacted with separately, for that row's own highlight.
+  const [activeStepId, setActiveStepId] = useState<string | null>(null);
+  // Locked timeline stops can't become "active" (they're not selectable), but
+  // hovering one should still point at its matching locked map label — a
+  // transient highlight, not the sticky active/select state above.
+  const [hoveredLockedNodeKey, setHoveredLockedNodeKey] = useState<MapNodeKey | null>(null);
+  // A node key can be shared by more than one timeline stop (e.g. "home"),
+  // so track the exact stop being hovered too, to light up only that one
+  // date box and none of its same-keyed siblings.
+  const [hoveredLockedStepId, setHoveredLockedStepId] = useState<string | null>(null);
   const [unlockAnimationNodeKey, setUnlockAnimationNodeKey] = useState<MapNodeKey | null>(
     initialMapState.unlockAnimationNodeKey
   );
@@ -500,12 +523,7 @@ function RoleMapPage({ initialMapState, selectedCharacter }: RoleMapPageProps) {
         (firstRoleStep ? routeSteps.findIndex((step) => step.id === firstRoleStep.id) : null);
       const route =
         unlockedStepIndex !== null
-          ? buildRoleAwareRoute(
-            unlockedStepIndex === 0 && visitedProgress < 0
-              ? INTRO_CUTSCENE_ROUTE
-              : routeSteps[unlockedStepIndex].route,
-            selectedCharacter
-          )
+          ? buildRoleAwareRoute(routeSteps[unlockedStepIndex].route, selectedCharacter)
           : null;
 
       return {
@@ -770,7 +788,9 @@ function RoleMapPage({ initialMapState, selectedCharacter }: RoleMapPageProps) {
   const renderResolvedNode = (node: ResolvedMapNode) => {
     const nodeDefinition = MAP_NODE_DEFINITIONS[node.key];
     const nodePosition = getRoleMapNodePosition(selectedCharacter, node.key);
-    const isActive = activeNode?.key === node.key;
+    const isActive =
+      activeNode?.key === node.key ||
+      (!node.isUnlocked && hoveredLockedNodeKey === node.key);
     const isFinalReturnNode =
       node.isUnlocked &&
       node.previewStepIndex !== null &&
@@ -787,10 +807,36 @@ function RoleMapPage({ initialMapState, selectedCharacter }: RoleMapPageProps) {
           zIndex: isActive ? 10 : 6,
         }}
         onMouseEnter={() => {
+          if (!node.isUnlocked) {
+            setHoveredLockedNodeKey(node.key);
+            setHoveredLockedStepId(
+              node.previewStepIndex !== null ? routeSteps[node.previewStepIndex]?.id ?? null : null
+            );
+            return;
+          }
           setActiveNodeKey(node.key);
+          setActiveStepId(
+            node.previewStepIndex !== null ? routeSteps[node.previewStepIndex]?.id ?? null : null
+          );
+        }}
+        onMouseLeave={() => {
+          if (!node.isUnlocked) {
+            setHoveredLockedNodeKey(null);
+            setHoveredLockedStepId(null);
+          }
         }}
         onClick={() => {
+          if (!node.isUnlocked) {
+            setHoveredLockedNodeKey(node.key);
+            setHoveredLockedStepId(
+              node.previewStepIndex !== null ? routeSteps[node.previewStepIndex]?.id ?? null : null
+            );
+            return;
+          }
           setActiveNodeKey(node.key);
+          setActiveStepId(
+            node.previewStepIndex !== null ? routeSteps[node.previewStepIndex]?.id ?? null : null
+          );
           if (!node.isSelectable) return;
           handleActivateNode(node);
         }}
@@ -824,7 +870,10 @@ function RoleMapPage({ initialMapState, selectedCharacter }: RoleMapPageProps) {
                 alt={nodeDefinition.image.alt}
                 className={`map-location hl-pixel-map-node hl-pixel-map-node--locked-silhouette ${nodeDefinition.image.className}`}
                 style={{
-                  cursor: "not-allowed",
+                  filter: isActive
+                    ? "brightness(0) drop-shadow(2px 0 0 #ffff00) drop-shadow(-2px 0 0 #ffff00) drop-shadow(0 2px 0 #ffff00) drop-shadow(0 -2px 0 #ffff00) drop-shadow(2px 2px 0 #ffff00) drop-shadow(-2px 2px 0 #ffff00) drop-shadow(2px -2px 0 #ffff00) drop-shadow(-2px -2px 0 #ffff00)"
+                    : undefined,
+                  cursor: isActive ? "pointer" : "not-allowed",
                 }}
                 draggable={false}
               />
@@ -1038,7 +1087,12 @@ function RoleMapPage({ initialMapState, selectedCharacter }: RoleMapPageProps) {
               >
                 {routeSteps.map((step, index) => {
                   const isUnlocked = index <= unlockedThroughIndex;
-                  const isActive = activeStep?.id === step.id;
+                  // While a locked stop is hovered, only that exact stop
+                  // shows as active — any previously-active unlocked stop
+                  // turns off, so there's never more than one active box.
+                  const isActive = hoveredLockedStepId
+                    ? hoveredLockedStepId === step.id
+                    : (activeStepId ?? activeStep?.id) === step.id;
                   return (
                     <button
                       key={step.id}
@@ -1047,9 +1101,28 @@ function RoleMapPage({ initialMapState, selectedCharacter }: RoleMapPageProps) {
                           ? "hl-pixel-timeline-event-item--enabled"
                           : "hl-pixel-timeline-event-item--disabled"
                         }`}
+                      onMouseEnter={() => {
+                        if (!isUnlocked) {
+                          setHoveredLockedNodeKey(step.nodeKey);
+                          setHoveredLockedStepId(step.id);
+                          return;
+                        }
+                        setActiveNodeKey(step.nodeKey);
+                        setActiveStepId(step.id);
+                      }}
+                      onMouseLeave={() => {
+                        if (!isUnlocked) {
+                          setHoveredLockedNodeKey(null);
+                          setHoveredLockedStepId(null);
+                        }
+                      }}
                       onClick={() => {
                         if (!isUnlocked) return;
                         setActiveNodeKey(step.nodeKey);
+                        setActiveStepId(step.id);
+                        navigateWithLoading(
+                          buildRoleAwareRoute(step.route, selectedCharacter)
+                        );
                       }}
                     >
                       <div
@@ -1121,6 +1194,30 @@ function RoleMapPage({ initialMapState, selectedCharacter }: RoleMapPageProps) {
             />
           </svg>
         </div>
+
+        {selectedCharacter === "CS" && unlockedThroughIndex >= finalStepIndex ? (
+          <div
+            className={`hl-pixel-map-route-layer ${SCHOOL_GATES_HOME_CONNECTOR.className}`}
+            style={{
+              aspectRatio: `${SCHOOL_GATES_HOME_CONNECTOR.width} / ${SCHOOL_GATES_HOME_CONNECTOR.height}`,
+            }}
+          >
+            <svg
+              className="hl-pixel-map-route-svg"
+              viewBox={SCHOOL_GATES_HOME_CONNECTOR.viewBox}
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              preserveAspectRatio="xMidYMid meet"
+            >
+              <path
+                d={SCHOOL_GATES_HOME_CONNECTOR.path}
+                stroke="#D52C2C"
+                strokeWidth="6"
+                strokeDasharray="10 10"
+              />
+            </svg>
+          </div>
+        ) : null}
 
         <div className="hl-pixel-map-node-layer pointer-events-none absolute inset-0 z-[8]">
           {visibleNodes.map((node) => renderResolvedNode(node))}

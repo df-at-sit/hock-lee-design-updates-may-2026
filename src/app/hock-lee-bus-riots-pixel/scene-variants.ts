@@ -701,6 +701,11 @@ const MARKET_BUS_WORKER_EAST_NPC = {
     top: "clamp(0px, 66vh, calc(100vh - 180px))",
     width: "155px",
   },
+  // On viewports under ~1018px wide, this NPC's left offset and the food
+  // seller's both bottom out at 0px and collide. The food seller's larger
+  // `top` value gives it a higher auto-computed depth/z-index, so without
+  // this override it renders on top and blocks clicks on Muthu Krishnan.
+  zIndex: 10,
 };
 
 const MARKET_BUS_WORKER_SOUTH_NPC = {

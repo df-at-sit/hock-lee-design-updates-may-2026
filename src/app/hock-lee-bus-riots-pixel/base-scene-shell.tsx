@@ -68,7 +68,6 @@ const PLAYER_CHARACTER_VISUAL_SCALE_BUMP = 1.05;
 const CHARACTER_LABEL_Z_INDEX = 12;
 const CHARACTER_SPRITE_Z_INDEX = 11;
 const NPC_LABEL_BOTTOM_OFFSET = 12;
-const NPC_CHAT_HOTSPOT_SIZE = 100;
 const NPC_CHAT_OPEN_DISTANCE = 200;
 const NPC_CHAT_AUTOPLAY_MS = 5000;
 const NPC_MIN_Z_INDEX = 2;
@@ -2469,13 +2468,16 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
     useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
             if (!allowCharacterMovement) return;
+            const lowerKey = event.key.toLowerCase();
+            const isLeftKey = event.key === "ArrowLeft" || lowerKey === "a";
+            const isRightKey = event.key === "ArrowRight" || lowerKey === "d";
             if (
                 event.key !== "ArrowUp" &&
                 event.key !== "ArrowDown" &&
-                event.key !== "ArrowLeft" &&
-                event.key !== "ArrowRight" &&
+                !isLeftKey &&
+                !isRightKey &&
                 event.key !== "Enter" &&
-                event.key.toLowerCase() !== "e"
+                lowerKey !== "e"
             ) {
                 return;
             }
@@ -2540,13 +2542,13 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
 
             setPressed((prev) => {
                 const next = { ...prev };
-                if (event.key === "ArrowLeft") {
+                if (isLeftKey) {
                     next.left = true;
                     next.right = false;
                     next.up = false;
                     next.down = false;
                 }
-                if (event.key === "ArrowRight") {
+                if (isRightKey) {
                     next.right = true;
                     next.left = false;
                     next.up = false;
@@ -2558,8 +2560,8 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
             setPosition((prev) => {
                 let nextX = prev.x;
 
-                if (event.key === "ArrowLeft") nextX -= STEP;
-                if (event.key === "ArrowRight") nextX += STEP;
+                if (isLeftKey) nextX -= STEP;
+                if (isRightKey) nextX += STEP;
 
                 const clamped = {
                     x: clampCharacterX(nextX, window.innerWidth),
@@ -2583,11 +2585,14 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
 
         const handleKeyUp = (event: KeyboardEvent) => {
             if (!allowCharacterMovement) return;
+            const lowerKey = event.key.toLowerCase();
+            const isLeftKey = event.key === "ArrowLeft" || lowerKey === "a";
+            const isRightKey = event.key === "ArrowRight" || lowerKey === "d";
             if (
                 event.key !== "ArrowUp" &&
                 event.key !== "ArrowDown" &&
-                event.key !== "ArrowLeft" &&
-                event.key !== "ArrowRight"
+                !isLeftKey &&
+                !isRightKey
             ) {
                 return;
             }
@@ -2596,8 +2601,8 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
 
             setPressed((prev) => {
                 const next = { ...prev };
-                if (event.key === "ArrowLeft") next.left = false;
-                if (event.key === "ArrowRight") next.right = false;
+                if (isLeftKey) next.left = false;
+                if (isRightKey) next.right = false;
                 return next;
             });
         };
@@ -3639,11 +3644,10 @@ export function BaseSceneShell({ config }: BaseSceneShellProps) {
                     return true;
                 };
                 const npcInteractionHotspotStyle: CSSProperties = {
-                    left: "50%",
-                    top: "-72px",
-                    width: `max(100%, ${NPC_CHAT_HOTSPOT_SIZE}px)`,
-                    height: "calc(100% + 72px)",
-                    transform: "translateX(-50%)",
+                    left: 0,
+                    top: 0,
+                    width: "100%",
+                    height: "100%",
                     ...npcFigure.interactionHotspotStyle,
                     pointerEvents: "auto",
                     zIndex: 15,

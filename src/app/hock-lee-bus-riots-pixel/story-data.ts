@@ -802,7 +802,7 @@ export const CUTSCENE_CONTENT_BY_ROLE: Record<
         "At first, Hock Lee appears as a labour dispute about unfair treatment, union conflict, and transport workers who say they are being pushed too far.",
         "You begin at a moment when Marshall's new government still hopes negotiation and credibility will be enough, even as British scrutiny and social pressure make that hope fragile.",
       ],
-      continueLabel: "Start the briefing",
+      continueLabel: "Let's begin",
     },
     "student-support-transition": {
       badge: "TURNING POINT",
@@ -881,7 +881,7 @@ export const CUTSCENE_CONTENT_BY_ROLE: Record<
         "Workers say union leave is denied, harsh treatment is common, and management favours a rival union. Dismissals hang over the depot like warnings to everyone still employed.",
         "You begin before the clashes peak, when Labour Front's election promises are still being tested and bus workers are asking whether anyone in power will listen before anger hardens into strike action.",
       ],
-      continueLabel: "Start Ahmad's route",
+      continueLabel: "Let's begin",
     },
     "student-support-transition": {
       badge: "TURNING POINT",
@@ -960,7 +960,7 @@ export const CUTSCENE_CONTENT_BY_ROLE: Record<
         "At first, Hock Lee reaches him as talk: speeches at City Hall, debate in class, market complaints, and family conversations that make labour politics feel close to home.",
         "You begin before he fully understands what students will be asked to do, or how support for workers might change the way he sees school, authority, and himself.",
       ],
-      continueLabel: "Go to City Hall",
+      continueLabel: "Let's begin",
     },
     "student-support-transition": {
       badge: "TURNING POINT",
@@ -1102,7 +1102,7 @@ export const getNextRouteForCutscene = (
   cutsceneKind: StoryCutsceneKind
 ) => {
   if (cutsceneKind === "intro") {
-    return getRoleSteps(role)[0]?.route ?? HOCK_LEE_MAP_ROUTE;
+    return HOCK_LEE_MAP_ROUTE;
   }
   if (cutsceneKind === "student-support-transition") {
     return role === "CS" ? BUS_DEPOT_ROUTE : HOCK_LEE_MAP_ROUTE;

@@ -20,7 +20,7 @@ import {
   CHARACTER_ROLE_LABELS,
 } from "../character-content";
 import { clearAllDispositionProgress } from "../disposition-state";
-import { HOCK_LEE_MAP_ROUTE } from "../story-paths";
+import { HOCK_LEE_MAP_ROUTE, INTRO_CUTSCENE_ROUTE } from "../story-paths";
 import { SceneTitleWithCamera } from "../scene-title-with-camera";
 import {
   SIDEQUEST_ACCEPTED_STORAGE_KEY,
@@ -39,6 +39,7 @@ export default function ChooseYourCharacterPage() {
 
   useEffect(() => {
     router.prefetch(HOCK_LEE_MAP_ROUTE);
+    router.prefetch(INTRO_CUTSCENE_ROUTE);
   }, [router]);
 
   useEffect(() => {
@@ -90,7 +91,7 @@ export default function ChooseYourCharacterPage() {
     clearAllDispositionProgress();
 
     startTransition(() => {
-      router.push(buildRoleAwareRoute(HOCK_LEE_MAP_ROUTE, selectedCharacter));
+      router.push(buildRoleAwareRoute(INTRO_CUTSCENE_ROUTE, selectedCharacter));
     });
   };
 

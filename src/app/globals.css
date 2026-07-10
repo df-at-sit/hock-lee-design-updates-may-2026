@@ -315,10 +315,17 @@ body {
   height: clamp(172px, 25vh, 245px);
 }
 
-.hl-map-character-profile-name-shell,
-.hl-map-character-profile-designation-shell {
+.hl-map-character-profile-name-shell {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 0px;
+  width: 200px;
+  height: 60px;
+  flex: none;
+  order: 0;
+  flex-grow: 0;
   z-index: 2;
-  width: 100%;
 }
 
 .hl-map-character-profile-name-shell.pixel-corners--wrapper::after {
@@ -371,7 +378,16 @@ body {
 }
 
 .hl-map-character-profile-designation-shell {
-  width: 78%;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 0px;
+  width: 173px;
+  height: 52px;
+  flex: none;
+  order: 1;
+  flex-grow: 0;
+  z-index: 2;
   margin-top: 2px;
 }
 
@@ -5034,6 +5050,14 @@ button.quest-menu-lightbox-card:focus-visible {
   border-color: #713501;
 }
 
+.map-timeline-button.pixel-corners.hl-pixel-timeline-date-box--locked:hover {
+  background: #8a4310 !important;
+  border-color: #8a4310;
+  box-shadow:
+    0 4px 0 rgba(0, 0, 0, 0.45),
+    0 0 0 2px rgba(255, 207, 151, 0.35);
+}
+
 .hl-pixel-timeline-date-box--inactive {
   opacity: 0.9;
   box-shadow: 0 4px 0 rgba(0, 0, 0, 0.45);
@@ -5140,6 +5164,7 @@ button.quest-menu-lightbox-card:focus-visible {
 }
 
 .hl-cutscene-dialogue-bubble {
+  position: relative;
   flex: 1 1 0;
   min-width: 0;
   height: clamp(240px, 30vh, 320px);
@@ -5152,6 +5177,34 @@ button.quest-menu-lightbox-card:focus-visible {
   scrollbar-gutter: stable;
   scrollbar-width: thin;
   scrollbar-color: #8bd3ff rgba(26, 15, 10, 0.22);
+}
+
+.hl-cutscene-dialogue-advance {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  line-height: 0;
+}
+
+.hl-cutscene-dialogue-advance:hover {
+  opacity: 0.7;
+}
+
+.hl-cutscene-dialogue-advance:disabled {
+  cursor: not-allowed;
+}
+
+.hl-cutscene-dialogue-advance:disabled:hover {
+  opacity: 1;
 }
 
 .hl-cutscene-dialogue-bubble::-webkit-scrollbar {
@@ -5216,6 +5269,13 @@ button.quest-menu-lightbox-card:focus-visible {
   left: 28.8%;
   top: 12.4%;
   width: 36.2%;
+}
+
+.hl-pixel-map-connector--school-gates-home {
+  left: 38%;
+  top: 17%;
+  width: 13%;
+  z-index: 5;
 }
 
 .hl-pixel-map-route-layer--bus-worker {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { GameMenuOverlay } from "./game-menu-overlay";
 import {
@@ -46,7 +46,6 @@ function RoleCutsceneShell({
   const [isPrevVisible, setIsPrevVisible] = useState(false);
   const [isContinueHighlighted, setIsContinueHighlighted] = useState(false);
   const [isContinueHovered, setIsContinueHovered] = useState(false);
-  const [isSkipHovered, setIsSkipHovered] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const startTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -69,8 +68,7 @@ function RoleCutsceneShell({
     };
   }, []);
 
-  useEffect(() => {
-    let resetWordsTimeout: ReturnType<typeof setTimeout> | null = null;
+  useLayoutEffect(() => {
     let showPrevParagraphTimeout: ReturnType<typeof setTimeout> | null = null;
     let hidePrevParagraphTimeout: ReturnType<typeof setTimeout> | null = null;
 
@@ -86,9 +84,11 @@ function RoleCutsceneShell({
     }
 
     const words = paragraphs[activeIndex].split(" ");
-    resetWordsTimeout = setTimeout(() => {
-      setVisibleWordCount(0);
-    }, 0);
+    // Reset synchronously (not via setTimeout) so visibleWordCount never
+    // briefly holds the previous paragraph's word count against the new
+    // paragraph's length, which could momentarily read as "done" on a
+    // shorter paragraph and flash the Continue button active.
+    setVisibleWordCount(0);
     if (merlionBubbleRef.current) {
       merlionBubbleRef.current.scrollTop = 0;
     }
@@ -117,7 +117,7 @@ function RoleCutsceneShell({
         }
         return prev + 1;
       });
-    }, 120);
+    }, 92);
 
     return () => {
       if (wordIntervalRef.current) {
@@ -125,9 +125,6 @@ function RoleCutsceneShell({
       }
       if (nextTimeoutRef.current) {
         clearTimeout(nextTimeoutRef.current);
-      }
-      if (resetWordsTimeout) {
-        clearTimeout(resetWordsTimeout);
       }
       if (showPrevParagraphTimeout) {
         clearTimeout(showPrevParagraphTimeout);
@@ -202,6 +199,25 @@ function RoleCutsceneShell({
   const continueHovered = isMerlionDone && isContinueHovered;
   const navigateToNextScene = () => {
     router.push(continueRoute);
+  };
+  const handleAdvanceDialogue = () => {
+    if (activeIndex < 0) return;
+    const words = paragraphs[activeIndex]?.split(" ") ?? [];
+    if (visibleWordCount < words.length) {
+      if (wordIntervalRef.current) {
+        clearInterval(wordIntervalRef.current);
+      }
+      setVisibleWordCount(words.length);
+      return;
+    }
+    if (activeIndex + 1 < paragraphs.length) {
+      if (nextTimeoutRef.current) {
+        clearTimeout(nextTimeoutRef.current);
+      }
+      setActiveIndex(activeIndex + 1);
+      return;
+    }
+    navigateToNextScene();
   };
   const handleMenuNavigation = (route: string) => {
     setIsMenuOpen(false);
@@ -310,30 +326,19 @@ function RoleCutsceneShell({
                   </p>
                 ) : null}
               </div>
+              <button
+                type="button"
+                className="hl-cutscene-dialogue-advance"
+                aria-label="Next"
+                disabled={isMerlionDone}
+                aria-disabled={isMerlionDone}
+                onClick={handleAdvanceDialogue}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" fill="none">
+                  <path d="M28 10H4L16 22L28 10Z" fill={isMerlionDone ? "#888887" : "#111110"} />
+                </svg>
+              </button>
             </div>
-          </div>
-          <div className="flex justify-start pl-[88px]">
-            <button
-              type="button"
-              className="artifact-label pixel-corners border px-3 py-2 uppercase tracking-[0.18em]"
-              onClick={navigateToNextScene}
-              onMouseEnter={() => setIsSkipHovered(true)}
-              onMouseLeave={() => setIsSkipHovered(false)}
-              style={{
-                width: "fit-content",
-                minWidth: "120px",
-                backgroundColor: isSkipHovered ? "#ffb700" : "#f24747",
-                color: isSkipHovered ? "#1a1513" : "#fff4d9",
-                borderColor: isSkipHovered ? "#7a1c1c" : "#7a1c1c",
-                fontFamily: "\"PPNeueBit Bold\", \"PPNeueBit\", monospace",
-                fontSize: "18px",
-                fontWeight: 700,
-                lineHeight: 1,
-                textShadow: "none",
-              }}
-            >
-              Skip
-            </button>
           </div>
           <div className="flex items-start justify-end gap-4">
             <div className="flex flex-1 flex-col items-end">
