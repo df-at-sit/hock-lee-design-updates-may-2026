@@ -7138,20 +7138,20 @@ button.quest-menu-lightbox-card:focus-visible {
   object-fit: contain;
   image-rendering: pixelated;
   filter: grayscale(1) saturate(0.15) opacity(0.68);
-  transform: scale(2.05) translateY(19%);
+  transform: scale(2.665) translateY(calc(19% - 12px));
   transform-origin: 50% 30%;
 }
 
 .hl-character-select-page--choose .hl-character-select-portrait[data-character="CIV"] .hl-character-select-portrait-image {
-  transform: scale(2.12) translateY(18%);
+  transform: scale(2.756) translateY(calc(18% - 12px));
 }
 
 .hl-character-select-page--choose .hl-character-select-portrait[data-character="BW"] .hl-character-select-portrait-image {
-  transform: scale(2.05) translateY(19%);
+  transform: scale(2.665) translateY(calc(19% - 12px));
 }
 
 .hl-character-select-page--choose .hl-character-select-portrait[data-character="CS"] .hl-character-select-portrait-image {
-  transform: scale(2.02) translateY(20%);
+  transform: scale(2.626) translateY(calc(20% - 12px));
 }
 
 .hl-character-select-page--choose .hl-character-select-portrait-shell[data-selected="true"] .hl-character-select-portrait-image {
